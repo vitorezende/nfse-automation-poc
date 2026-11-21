@@ -1,0 +1,123 @@
+package poc.nfse.robot;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.CookieManager;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.RabbitMQContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.utility.MountableFile;
+
+/**
+ * Seam 1: the Robô de Emissão's boundary. Commands go in on the real queue; events, stored objects and
+ * the NFS-e at a real Portal da Prefeitura (built from its Dockerfile) are observed from outside.
+ */
+public abstract class RobotBoundaryTestSupport {
+
+  static final Path REPO_ROOT = Path.of("../..").toAbsolutePath().normalize();
+  static final String EVENTS_EXCHANGE = "nfse.events";
+  static final String COMMAND_QUEUE = "robot.issue-nfse";
+  static final ObjectMapper JSON = new ObjectMapper();
+  private static final AtomicInteger NEXT_RPS = new AtomicInteger((int) (Instant.now().getEpochSecond() % 100_000) * 10);
+
+  static final Network NETWORK = Network.newNetwork();
+
+  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
+      .withNetwork(NETWORK)
+      .withNetworkAliases("postgres")
+      .withDatabaseName("city_hall");
+
+  static final GenericContainer<?> CITY_HALL = new GenericContainer<>(
+          new ImageFromDockerfile("nfse-poc-city-hall-portal-test", false)
+              .withFileFromPath(".", REPO_ROOT.resolve("services/city-hall-portal")))
+      .withNetwork(NETWORK)
+      .withEnv("DATABASE_URL", "postgresql://test:test@postgres:5432/city_hall")
+      .withExposedPorts(3001)
+      .dependsOn(POSTGRES)
+      .waitingFor(Wait.forHttp("/login").forPort(3001).withStartupTimeout(Duration.ofMinutes(3)));
+
+  static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:4.1-management-alpine")
+      .withCopyFileToContainer(
+          MountableFile.forHostPath(REPO_ROOT.resolve("infra/rabbitmq/definitions.json")), "/etc/rabbitmq/definitions.json")
+      .withCopyFileToContainer(
+          MountableFile.forHostPath(REPO_ROOT.resolve("infra/rabbitmq/10-definitions.conf")),
+          "/etc/rabbitmq/conf.d/10-definitions.conf");
+
+  static {
+    POSTGRES.start();
+    CITY_HALL.start();
+    RABBIT.start();
+  }
+
+  @DynamicPropertySource
+  static void properties(DynamicPropertyRegistry registry) {
+    registry.add("spring.rabbitmq.host", RABBIT::getHost);
+    registry.add("spring.rabbitmq.port", RABBIT::getAmqpPort);
+    registry.add("spring.rabbitmq.username", () -> "poc");
+    registry.add("spring.rabbitmq.password", () -> "poc");
+    registry.add("robot.city-hall-url", RobotBoundaryTestSupport::cityHallUrl);
+    registry.add("robot.credentials-file", () -> REPO_ROOT.resolve("infra/robot/credentials.json").toString());
+  }
+
+  static String cityHallUrl() {
+    return "http://" + CITY_HALL.getHost() + ":" + CITY_HALL.getMappedPort(3001);
+  }
+
+  /** The IssueNfse example from the contracts, with fresh identifiers and a never-used RPS number. */
+  static ObjectNode issueNfseCommand() throws IOException {
+    try (InputStream in = RobotBoundaryTestSupport.class.getResourceAsStream("/contracts/examples/issue-nfse.json")) {
+      ObjectNode command = (ObjectNode) JSON.readTree(in);
+      command.put("messageId", UUID.randomUUID().toString());
+      command.put("correlationId", UUID.randomUUID().toString());
+      ObjectNode payload = (ObjectNode) command.get("payload");
+      payload.put("issuanceRequestId", UUID.randomUUID().toString());
+      ((ObjectNode) payload.get("rps")).put("number", NEXT_RPS.incrementAndGet());
+      return command;
+    }
+  }
+
+  static void send(RabbitTemplate rabbit, JsonNode command) throws IOException {
+    Message message = MessageBuilder.withBody(JSON.writeValueAsBytes(command))
+        .setContentType(MessageProperties.CONTENT_TYPE_JSON)
+        .setMessageId(command.path("messageId").asText())
+        .build();
+    rabbit.send("", COMMAND_QUEUE, message);
+  }
+
+  /** Looks the RPS up on the Portal da Prefeitura as the given Prestador, like a human would. */
+  static boolean cityHallHasNfseForRps(String username, String password, int rpsNumber, String rpsSeries) throws Exception {
+    HttpClient http = HttpClient.newBuilder().cookieHandler(new CookieManager()).build();
+    String form = "username=" + username + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8);
+    http.send(HttpRequest.newBuilder(URI.create(cityHallUrl() + "/login"))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .POST(HttpRequest.BodyPublishers.ofString(form)).build(), HttpResponse.BodyHandlers.discarding());
+    String page = http.send(HttpRequest.newBuilder(URI.create(
+            cityHallUrl() + "/nfse/consulta?rpsNumber=" + rpsNumber + "&rpsSeries=" + rpsSeries)).build(),
+        HttpResponse.BodyHandlers.ofString()).body();
+    if (!page.contains("Consulta de NFS-e por RPS")) throw new IllegalStateException("Login at the Prefeitura failed");
+    return !page.contains("Nenhuma NFS-e encontrada");
+  }
+}
