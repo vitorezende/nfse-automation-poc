@@ -13,4 +13,5 @@ export const EVENT_LABELS: Record<string, string> = {
   NfseIssuanceAttemptFailed: 'Tentativa falhou',
   NfseIssued: 'NFS-e emitida',
   NfseIssuanceFailed: 'Emissão falhou',
+  Reprocessamento: 'Reprocessamento solicitado',
 };

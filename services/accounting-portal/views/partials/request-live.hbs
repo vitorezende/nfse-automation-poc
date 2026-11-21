@@ -13,6 +13,9 @@
   {{#if request.canDispatch}}
   <form method="post" action="/solicitacoes/{{request.id}}/emitir"><p><button class="btn" type="submit">Emitir</button></p></form>
   {{/if}}
+  {{#if request.canReprocess}}
+  <form method="post" action="/solicitacoes/{{request.id}}/reprocessar"><p><button class="btn" type="submit">Reprocessar</button> <span class="muted">Reenvia com o mesmo RPS: nunca gera uma segunda NFS-e.</span></p></form>
+  {{/if}}
 </div>
 <div class="card">
   <h2 style="font-size:16px;margin:0 0 8px">Linha do tempo</h2>
