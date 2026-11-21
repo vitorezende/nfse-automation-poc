@@ -18,6 +18,18 @@ export class InvalidIssuanceRequestError extends Error {}
 /** The Solicitação is not in a state that allows the requested action. */
 export class IssuanceRequestStateError extends Error {}
 
+/**
+ * Normalises a Competência to the contract's AAAA-MM. Browsers without a month picker let the operator type
+ * free text, so MM/AAAA, the usual Brazilian spelling, is accepted too. Returns null for anything else.
+ */
+function normalizeCompetencia(value: string | undefined): string | null {
+  const text = value?.trim() ?? '';
+  const iso = /^(\d{4})-(\d{2})$/.exec(text);
+  const brazilian = /^(\d{2})\/(\d{4})$/.exec(text);
+  const [year, month] = iso ? [iso[1], iso[2]] : brazilian ? [brazilian[2], brazilian[1]] : [];
+  return year && /^(0[1-9]|1[0-2])$/.test(month!) ? `${year}-${month}` : null;
+}
+
 export type IssuanceRequestWithPrestador = IssuanceRequest & { prestador: Prestador; timeline?: TimelineEntry[] };
 
 @Injectable()
@@ -30,6 +42,8 @@ export class IssuanceRequestsService {
     const text = [form.tomadorCnpj, form.tomadorName, form.competencia, form.discriminacao];
     if (amount === null || amount.lte(0)) throw new InvalidIssuanceRequestError('Informe um valor válido, por exemplo 1500.00.');
     if (text.some((value) => !value?.trim())) throw new InvalidIssuanceRequestError('Preencha todos os campos.');
+    const competencia = normalizeCompetencia(form.competencia);
+    if (!competencia) throw new InvalidIssuanceRequestError('Informe a competência no formato AAAA-MM, por exemplo 2026-11.');
 
     return this.prisma.$transaction(async (tx) => {
       const prestador = await tx.prestador.findUnique({ where: { cnpj: form.prestadorCnpj ?? '' } });
@@ -53,7 +67,7 @@ export class IssuanceRequestsService {
           tomadorCnpj: form.tomadorCnpj!.trim(),
           tomadorName: form.tomadorName!.trim(),
           amount,
-          competencia: form.competencia!.trim(),
+          competencia,
           discriminacao: form.discriminacao!.trim(),
         },
       });
