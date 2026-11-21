@@ -63,9 +63,13 @@ export class OutboxRelay implements OnApplicationBootstrap, OnApplicationShutdow
       } as Options.Publish);
       await this.prisma.$transaction([
         this.prisma.outboxMessage.update({ where: { id: row.id }, data: { publishedAt: new Date() } }),
+        // First dispatch (Rascunho) or Reprocessamento (Falhou with a pending request) → Enviada.
         this.prisma.issuanceRequest.updateMany({
-          where: { id: row.issuanceRequestId, status: 'DRAFT' },
-          data: { status: 'DISPATCHED' },
+          where: {
+            id: row.issuanceRequestId,
+            OR: [{ status: 'DRAFT' }, { status: 'FAILED', reprocessRequestedAt: { not: null } }],
+          },
+          data: { status: 'DISPATCHED', reprocessRequestedAt: null, failureReason: null },
         }),
       ]);
       this.logger.log(`Published ${message.type} ${message.messageId} [correlationId=${message.correlationId}]`);

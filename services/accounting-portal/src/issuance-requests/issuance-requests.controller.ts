@@ -1,4 +1,4 @@
-import { Body, Controller, Get, type MessageEvent, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse } from '@nestjs/common';
+import { Body, ConflictException, Controller, Get, type MessageEvent, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse } from '@nestjs/common';
 import hbs from 'hbs';
 import { concat, defer, filter, from, Observable, switchMap } from 'rxjs';
 import { IssuanceUpdates } from './issuance-updates.js';
@@ -7,6 +7,7 @@ import { EVENT_LABELS, STATUS_LABELS } from './status-labels.js';
 import {
   type CreateIssuanceRequestForm,
   InvalidIssuanceRequestError,
+  IssuanceRequestStateError,
   type IssuanceRequestWithPrestador,
   IssuanceRequestsService,
 } from './issuance-requests.service.js';
@@ -14,10 +15,16 @@ import {
 function toView(request: IssuanceRequestWithPrestador) {
   return {
     id: request.id,
+    correlationId: request.correlationId,
     status: request.status,
     statusLabel:
-      request.status === 'DRAFT' && request.dispatchRequestedAt ? 'Rascunho (envio pendente)' : STATUS_LABELS[request.status],
+      request.status === 'DRAFT' && request.dispatchRequestedAt
+        ? 'Rascunho (envio pendente)'
+        : request.status === 'FAILED' && request.reprocessRequestedAt
+          ? 'Falhou (reprocessamento pendente)'
+          : STATUS_LABELS[request.status],
     canDispatch: request.status === 'DRAFT' && !request.dispatchRequestedAt,
+    canReprocess: request.status === 'FAILED' && !request.reprocessRequestedAt,
     rps: `${request.rpsNumber} / ${request.rpsSeries}`,
     prestador: `${request.prestador.name} - CNPJ ${request.prestador.cnpj}`,
     tomador: `${request.tomadorName} - CNPJ ${request.tomadorCnpj}`,
@@ -34,7 +41,7 @@ function toView(request: IssuanceRequestWithPrestador) {
     timeline: (request.timeline ?? []).map((entry) => ({
       occurredAt: formatDate(entry.occurredAt),
       label: EVENT_LABELS[entry.type] ?? entry.type,
-      attempt: entry.attempt,
+      attempt: entry.attempt > 0 ? entry.attempt : '',
       detail: entry.detail,
     })),
   };
@@ -90,6 +97,18 @@ export class IssuanceRequestsController {
       await this.issuanceRequests.dispatch(id);
     } catch (error) {
       if (error instanceof InvalidIssuanceRequestError) throw new NotFoundException();
+      throw error;
+    }
+    res.redirect(`/solicitacoes/${id}`);
+  }
+
+  @Post('solicitacoes/:id/reprocessar')
+  async reprocess(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response): Promise<void> {
+    try {
+      await this.issuanceRequests.reprocess(id);
+    } catch (error) {
+      if (error instanceof InvalidIssuanceRequestError) throw new NotFoundException();
+      if (error instanceof IssuanceRequestStateError) throw new ConflictException(error.message);
       throw error;
     }
     res.redirect(`/solicitacoes/${id}`);
