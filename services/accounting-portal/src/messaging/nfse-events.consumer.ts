@@ -85,8 +85,9 @@ export class NfseEventsConsumer {
             attempt,
             detail: this.detail(event),
             occurredAt: new Date(event.occurredAt),
-            artifactsBucket: event.payload.artifacts?.screenshot?.bucket ?? event.payload.artifacts?.trace?.bucket,
+            screenshotBucket: event.payload.artifacts?.screenshot?.bucket,
             screenshotKey: event.payload.artifacts?.screenshot?.key,
+            traceBucket: event.payload.artifacts?.trace?.bucket,
             traceKey: event.payload.artifacts?.trace?.key,
           },
         });

@@ -40,7 +40,7 @@ Every attempt runs under a Playwright trace (screenshots + DOM snapshots). On su
 <issuanceRequestId>/failures/<command messageId>/attempt-<n>/trace.zip
 ```
 
-The references travel in `payload.artifacts` of `NfseIssuanceAttemptFailed` / `NfseIssuanceFailed`. The command's `messageId` is part of the key, so a Reprocessamento (a new command whose attempts restart at 1) never overwrites earlier evidence. Recording is best effort: if an upload fails, the event goes out without that reference and the attempt's outcome doesn't change. Open a trace with `npx playwright show-trace trace.zip` or at https://trace.playwright.dev.
+The references travel in `payload.artifacts` of `NfseIssuanceAttemptFailed` / `NfseIssuanceFailed`. The command's `messageId` is part of the key, so a Reprocessamento (a new command whose attempts restart at 1) never overwrites earlier evidence. Failures before the browser has a page (unknown `credentialRef`, a browser that won't launch) and claim-check uploads after issuance carry no artifacts: there is no page to show. When retries run out, `NfseIssuanceFailed` repeats the last attempt's references. Recording is best effort: if an upload fails, the event goes out without that reference and the attempt's outcome doesn't change. Open a trace with `npx playwright show-trace trace.zip` or at https://trace.playwright.dev.
 
 Each page step waits for an explicit outcome (the logged-in menu or an alert, the NFS-e number or an alert), never for a bare load state. Every navigation checks the HTTP status.
 

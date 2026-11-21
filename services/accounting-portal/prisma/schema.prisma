@@ -99,8 +99,9 @@ model TimelineEntry {
   detail            String?
   occurredAt        DateTime
   /// Screenshot and Playwright trace of a failed attempt, stored in object storage by the robot.
-  artifactsBucket   String?
+  screenshotBucket  String?
   screenshotKey     String?
+  traceBucket       String?
   traceKey          String?
 
   @@index([issuanceRequestId, occurredAt])

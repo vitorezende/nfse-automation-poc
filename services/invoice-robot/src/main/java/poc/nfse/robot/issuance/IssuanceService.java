@@ -72,8 +72,12 @@ public class IssuanceService {
           "xml", documents.put(prefix + "nfse-" + nfse.number() + ".xml", result.documents().xml(), "application/xml"),
           "pdf", documents.put(prefix + "danfse-" + nfse.number() + ".pdf", result.documents().pdf(), "application/pdf"));
     } catch (RuntimeException e) {
-      Map<String, Object> artifacts = e instanceof RecordedFailure recorded ? recorded.artifacts : Map.of();
-      Throwable failure = e instanceof RecordedFailure ? e.getCause() : e;
+      Throwable failure = e;
+      Map<String, Object> artifacts = Map.of();
+      if (e instanceof RecordedFailure recorded) {
+        failure = recorded.getCause();
+        artifacts = recorded.artifacts;
+      }
       if (failure instanceof BusinessFailureException) {
         log.warn("Issuance failed for good (business): {}", failure.getMessage());
         events.publishFailure("NfseIssuanceFailed", command, attempt, "business", failure.getMessage(), artifacts);
@@ -107,7 +111,7 @@ public class IssuanceService {
       recorder.start(context);
       Page page = context.newPage();
       try {
-        Result result = issueOnPages(new CityHallPortal(page, properties.cityHallUrl()), payload, login);
+        Result result = issueWithRelogins(new CityHallPortal(page, properties.cityHallUrl()), payload, login);
         recorder.discard(context);
         return result;
       } catch (RuntimeException e) {
@@ -118,7 +122,7 @@ public class IssuanceService {
     }
   }
 
-  private Result issueOnPages(CityHallPortal portal, IssueNfseCommand.Payload payload, Credentials login) {
+  private Result issueWithRelogins(CityHallPortal portal, IssueNfseCommand.Payload payload, Credentials login) {
     portal.login(login);
     for (int relogins = 0; ; relogins++) {
       try {
