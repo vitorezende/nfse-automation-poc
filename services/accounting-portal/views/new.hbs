@@ -1,0 +1,25 @@
+<h1>Nova Solicitação de Emissão</h1>
+<div class="card">
+  {{#if error}}<div class="error" role="alert">{{error}}</div>{{/if}}
+  <form method="post" action="/solicitacoes">
+    <label for="prestadorCnpj">Prestador</label>
+    <select id="prestadorCnpj" name="prestadorCnpj" hx-get="/servicos" hx-target="#servicoCode" hx-trigger="change">
+      {{#each prestadores}}<option value="{{cnpj}}" {{#if selected}}selected{{/if}}>{{name}} - {{cnpj}}</option>{{/each}}
+    </select>
+    <label for="servicoCode">Serviço (Catálogo de Serviços do Prestador)</label>
+    <select id="servicoCode" name="servicoCode">
+      {{> servico-options}}
+    </select>
+    <label for="tomadorCnpj">CNPJ do Tomador</label>
+    <input id="tomadorCnpj" name="tomadorCnpj" value="{{form.tomadorCnpj}}" placeholder="00.000.000/0001-00">
+    <label for="tomadorName">Razão social do Tomador</label>
+    <input id="tomadorName" name="tomadorName" value="{{form.tomadorName}}">
+    <label for="amount">Valor do serviço (R$)</label>
+    <input id="amount" name="amount" value="{{form.amount}}" placeholder="1500.00" inputmode="decimal">
+    <label for="competencia">Competência</label>
+    <input id="competencia" name="competencia" type="month" value="{{form.competencia}}">
+    <label for="discriminacao">Discriminação</label>
+    <textarea id="discriminacao" name="discriminacao">{{form.discriminacao}}</textarea>
+    <p><button class="btn" type="submit">Salvar como Rascunho</button></p>
+  </form>
+</div>

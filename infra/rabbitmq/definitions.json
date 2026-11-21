@@ -1,0 +1,12 @@
+{
+  "users": [{ "name": "poc", "password": "poc", "tags": ["administrator"] }],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [{ "user": "poc", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }],
+  "exchanges": [
+    { "name": "nfse.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    { "name": "robot.issue-nfse", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-queue-type": "quorum" } }
+  ],
+  "bindings": []
+}

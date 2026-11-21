@@ -1,0 +1,78 @@
+// Portal da Contabilidade: its own private database.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Prestador {
+  id                 Int                 @id @default(autoincrement())
+  cnpj               String              @unique
+  name               String
+  /// Key the Robô de Emissão resolves in its own secret store; the password never lives here.
+  credentialRef      String
+  rpsSeries          String              @default("A")
+  nextRpsNumber      Int                 @default(1)
+  servicos           Servico[]
+  issuanceRequests   IssuanceRequest[]
+}
+
+/// An entry in a Prestador's Catálogo de Serviços.
+model Servico {
+  id          Int       @id @default(autoincrement())
+  prestador   Prestador @relation(fields: [prestadorId], references: [id])
+  prestadorId Int
+  code        String
+  description String
+  issRate     Decimal   @db.Decimal(7, 4)
+}
+
+enum IssuanceRequestStatus {
+  DRAFT
+  DISPATCHED
+  PROCESSING
+  ISSUED
+  FAILED
+}
+
+/// Solicitação de Emissão.
+model IssuanceRequest {
+  id                  String                @id @default(uuid()) @db.Uuid
+  correlationId       String                @default(uuid()) @db.Uuid
+  prestador           Prestador             @relation(fields: [prestadorId], references: [id])
+  prestadorId         Int
+  rpsNumber           Int
+  rpsSeries           String
+  servicoCode         String
+  servicoDescription  String
+  issRate             Decimal               @db.Decimal(7, 4)
+  tomadorCnpj         String
+  tomadorName         String
+  amount              Decimal               @db.Decimal(14, 2)
+  competencia         String
+  discriminacao       String
+  status              IssuanceRequestStatus @default(DRAFT)
+  /// Set when the operator clicks Emitir; the status only becomes DISPATCHED once the command is published.
+  dispatchRequestedAt DateTime?
+  createdAt           DateTime              @default(now())
+
+  @@unique([prestadorId, rpsNumber, rpsSeries])
+}
+
+/// Transactional outbox: written in the same transaction as the state change, published by the relay.
+model OutboxMessage {
+  id                String    @id @default(uuid()) @db.Uuid
+  issuanceRequestId String    @db.Uuid
+  exchange          String
+  routingKey        String
+  message           Json
+  createdAt         DateTime  @default(now())
+  publishedAt       DateTime?
+
+  @@index([publishedAt, createdAt])
+}
