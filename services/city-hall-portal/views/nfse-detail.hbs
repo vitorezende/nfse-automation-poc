@@ -1,0 +1,17 @@
+<div class="success" role="status">NFS-e emitida com sucesso.</div>
+<h2>NFS-e nº <span id="nfse-number">{{nfse.number}}</span></h2>
+<table class="grid">
+  <tr><th>Número da NFS-e</th><td data-field="number">{{nfse.number}}</td></tr>
+  <tr><th>Código de verificação</th><td data-field="verificationCode">{{nfse.verificationCode}}</td></tr>
+  <tr><th>Data de emissão</th><td data-field="issuedAt">{{nfse.issuedAt}}</td></tr>
+  <tr><th>RPS (número / série)</th><td data-field="rps">{{nfse.rps}}</td></tr>
+  <tr><th>Prestador</th><td>{{prestadorName}} - CNPJ {{prestadorCnpj}}</td></tr>
+  <tr><th>Tomador</th><td>{{nfse.tomadorName}} - CNPJ {{nfse.tomadorCnpj}}</td></tr>
+  <tr><th>Serviço</th><td>{{nfse.servico}}</td></tr>
+  <tr><th>Competência</th><td>{{nfse.competencia}}</td></tr>
+  <tr><th>Discriminação</th><td>{{nfse.discriminacao}}</td></tr>
+  <tr><th>Valor do serviço</th><td>{{nfse.amount}}</td></tr>
+  <tr><th>Alíquota do ISS</th><td>{{nfse.issRate}}</td></tr>
+  <tr><th>Valor do ISS</th><td>{{nfse.issAmount}}</td></tr>
+</table>
+<p><a href="/nfse/emitir">Emitir outra NFS-e</a></p>

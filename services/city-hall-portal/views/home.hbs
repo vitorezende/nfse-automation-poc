@@ -1,0 +1,13 @@
+<h2>Bem-vindo, {{prestadorName}}</h2>
+<p><a href="/nfse/emitir">Emitir nova NFS-e</a> | <a href="/nfse/consulta">Consultar NFS-e por RPS</a></p>
+<h2>Últimas NFS-e emitidas</h2>
+{{#if nfses.length}}
+<table class="grid">
+  <tr><th>Número</th><th>RPS</th><th>Tomador</th><th>Valor</th><th>Emissão</th></tr>
+  {{#each nfses}}
+  <tr><td><a href="/nfse/{{id}}">{{number}}</a></td><td>{{rps}}</td><td>{{tomadorName}}</td><td>{{amount}}</td><td>{{issuedAt}}</td></tr>
+  {{/each}}
+</table>
+{{else}}
+<p>Nenhuma NFS-e emitida até o momento.</p>
+{{/if}}

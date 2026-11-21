@@ -1,0 +1,20 @@
+<h2>Consulta de NFS-e por RPS</h2>
+<form method="get" action="/nfse/consulta" hx-get="/nfse/consulta" hx-target="#resultado" hx-select="#resultado" hx-swap="outerHTML" hx-push-url="true">
+  <table class="form">
+    <tr><td class="label"><label for="rpsNumber">Número do RPS</label></td><td><input type="text" id="rpsNumber" name="rpsNumber" value="{{rpsNumber}}"></td></tr>
+    <tr><td class="label"><label for="rpsSeries">Série do RPS</label></td><td><input type="text" id="rpsSeries" name="rpsSeries" value="{{rpsSeries}}"></td></tr>
+    <tr><td></td><td><button type="submit" class="btn">Consultar</button></td></tr>
+  </table>
+</form>
+<div id="resultado">
+  {{#if searched}}
+    {{#if nfse}}
+    <table class="grid">
+      <tr><th>Número</th><th>Código de verificação</th><th>RPS</th><th>Tomador</th><th>Valor</th></tr>
+      <tr><td><a href="/nfse/{{nfse.id}}">{{nfse.number}}</a></td><td>{{nfse.verificationCode}}</td><td>{{nfse.rps}}</td><td>{{nfse.tomadorName}}</td><td>{{nfse.amount}}</td></tr>
+    </table>
+    {{else}}
+    <p role="status">Nenhuma NFS-e encontrada para o RPS informado.</p>
+    {{/if}}
+  {{/if}}
+</div>

@@ -58,6 +58,23 @@ services:
     entrypoint: ["sh", "-c", "echo 's3.bucket.create -name nfse-documents' | weed shell -master=object-storage:9333"]
     restart: "no"
 
+  # Fake Portal da Prefeitura: web only, never connects to RabbitMQ (ADR 0001).
+  city-hall-portal:
+    build: ./services/city-hall-portal
+    ports:
+      - "3001:3001" # http://localhost:3001
+    environment:
+      DATABASE_URL: postgresql://poc:poc@postgres:5432/city_hall
+      SESSION_SECRET: local-demo-session-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/login || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
 volumes:
   postgres-data:
   object-storage-data:
