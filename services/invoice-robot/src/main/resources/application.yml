@@ -14,9 +14,14 @@ spring:
         acknowledge-mode: auto
         prefetch: 1
         concurrency: 1
-        # Page failures are handled by RetryScheduler; an unexpected infrastructure error (e.g. no broker
-        # confirm) leaves the command on the queue. Contract violations are rejected without requeue.
-        default-requeue-rejected: true
+        # Page failures are handled by RetryScheduler. Unexpected errors (e.g. no broker confirm) are retried
+        # in-process with backoff, then the command is parked in the DLQ (RabbitConfig#parkInDeadLetterQueue).
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 10s
 
 server:
   port: ${PORT:8080}

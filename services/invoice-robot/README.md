@@ -5,7 +5,7 @@ Java 21 + Spring Boot 3 + Spring AMQP + Playwright. It consumes `IssueNfse` comm
 ## Per command
 
 ```text
-validate against contracts/schemas          → reject (no requeue) on violation
+validate against contracts/schemas          → parked in robot.issue-nfse.dlq on violation
 publish NfseIssuanceStarted (confirmed)
 resolve credentialRef → login               (credential store; passwords never travel in messages)
 log in to the Portal da Prefeitura
@@ -18,7 +18,9 @@ transient failure (HTTP 5xx, timeout, browser)   → NfseIssuanceAttemptFailed(t
     attempt ≤ 3 → republish to robot.issue-nfse.retry-N with expiration 10s | 1m | 5m and x-attempt+1
                   (dead-lettered back to robot.issue-nfse when it expires)
     attempt = 4 → park in robot.issue-nfse.dlq, NfseIssuanceFailed(transient)
-    every republish is broker-confirmed before the original is acked
+    every republish is broker-confirmed before the original is acked; events follow the confirm
+
+unexpected error (e.g. no broker confirm)        → 3 in-process tries (1s, 2s, 4s), then parked in the DLQ
 ```
 
 Each page step waits for an explicit outcome (the logged-in menu or an alert, the NFS-e number or an alert), never for a bare load state. Every navigation checks the HTTP status.

@@ -24,6 +24,8 @@ public class RetryScheduler {
 
   public static final String ATTEMPT_HEADER = "x-attempt";
   static final String RETRY_QUEUE_PREFIX = "robot.issue-nfse.retry-";
+  /** Retry queues declared in infra/rabbitmq/definitions.json; a delay without a queue would be dropped. */
+  static final int DECLARED_RETRY_QUEUES = 3;
   static final String DLQ = "robot.issue-nfse.dlq";
   private static final Logger log = LoggerFactory.getLogger(RetryScheduler.class);
 
@@ -35,10 +37,14 @@ public class RetryScheduler {
     this.rabbit = rabbit;
     this.events = events;
     this.delays = properties.retryDelays();
+    if (delays.size() > DECLARED_RETRY_QUEUES) {
+      throw new IllegalStateException("robot.retry-delays has " + delays.size() + " entries but only "
+          + DECLARED_RETRY_QUEUES + " retry queues are declared");
+    }
   }
 
   public void onTransientFailure(Message original, IssueNfseCommand command, int attempt, String reason) {
-    events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason);
+    // Events are published only after the republish is confirmed, so a failed send never duplicates them.
     if (attempt <= delays.size()) {
       Duration delay = delays.get(attempt - 1);
       Message retry = MessageBuilder.fromMessage(original)
@@ -46,6 +52,7 @@ public class RetryScheduler {
           .setExpiration(String.valueOf(delay.toMillis()))
           .build();
       sendConfirmed(RETRY_QUEUE_PREFIX + attempt, retry);
+      events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason);
       log.info("Retry {} of {} scheduled in {}", attempt, delays.size(), delay);
     } else {
       Message parked = MessageBuilder.fromMessage(original)
@@ -53,6 +60,7 @@ public class RetryScheduler {
           .setHeader("x-failure-reason", reason)
           .build();
       sendConfirmed(DLQ, parked);
+      events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason);
       log.warn("Retries exhausted after {} attempts; command parked in {}", attempt, DLQ);
       events.publishFailure("NfseIssuanceFailed", command, attempt, "transient", "Retries exhausted: " + reason);
     }
