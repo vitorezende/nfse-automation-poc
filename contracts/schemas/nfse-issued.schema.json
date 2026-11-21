@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nfse-poc.example/schemas/nfse-issued.schema.json",
+  "title": "NfseIssued",
+  "description": "The NFS-e exists at the Prefeitura. Documents travel as object references, never inline.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "NfseIssued"
+    },
+    "version": {
+      "const": 1
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "issuanceRequestId",
+        "rps",
+        "attempt",
+        "nfse"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "issuanceRequestId": {
+          "$ref": "common.schema.json#/$defs/issuanceRequestId"
+        },
+        "rps": {
+          "$ref": "common.schema.json#/$defs/rps"
+        },
+        "attempt": {
+          "$ref": "common.schema.json#/$defs/attempt"
+        },
+        "nfse": {
+          "type": "object",
+          "required": [
+            "number",
+            "verificationCode",
+            "issuedAt"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "number": {
+              "type": "string",
+              "minLength": 1
+            },
+            "verificationCode": {
+              "type": "string",
+              "minLength": 1
+            },
+            "issuedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "documents": {
+          "type": "object",
+          "required": [
+            "xml",
+            "pdf"
+          ],
+          "additionalProperties": false,
+          "description": "Optional until document download is implemented (#8).",
+          "properties": {
+            "xml": {
+              "$ref": "common.schema.json#/$defs/objectRef"
+            },
+            "pdf": {
+              "$ref": "common.schema.json#/$defs/objectRef"
+            }
+          }
+        }
+      }
+    }
+  }
+}

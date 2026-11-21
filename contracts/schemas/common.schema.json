@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nfse-poc.example/schemas/common.schema.json",
+  "title": "Shared definitions",
+  "$defs": {
+    "issuanceRequestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identifier of the Solicitação de Emissão in the Portal da Contabilidade."
+    },
+    "cnpj": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Fake CNPJ; intentionally not validated."
+    },
+    "money": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d{2}$",
+      "description": "Decimal amount in BRL as a string, e.g. 1500.00."
+    },
+    "rps": {
+      "type": "object",
+      "required": [
+        "number",
+        "series"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "series": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-based attempt number; retries and Reprocessamento increment it."
+    },
+    "objectRef": {
+      "type": "object",
+      "required": [
+        "bucket",
+        "key"
+      ],
+      "additionalProperties": false,
+      "description": "Reference to an object stored in MinIO (claim check, ADR 0004).",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "errorCategory": {
+      "enum": [
+        "transient",
+        "business"
+      ],
+      "description": "transient = retried automatically; business = fails immediately."
+    },
+    "failureArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Screenshot and Playwright trace captured on a failed attempt.",
+      "properties": {
+        "screenshot": {
+          "$ref": "#/$defs/objectRef"
+        },
+        "trace": {
+          "$ref": "#/$defs/objectRef"
+        }
+      }
+    }
+  }
+}

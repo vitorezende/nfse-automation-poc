@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nfse-poc.example/schemas/nfse-issuance-attempt-failed.schema.json",
+  "title": "NfseIssuanceAttemptFailed",
+  "description": "One attempt failed; informational, the Solicitação may still succeed on retry.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "NfseIssuanceAttemptFailed"
+    },
+    "version": {
+      "const": 1
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "issuanceRequestId",
+        "rps",
+        "attempt",
+        "errorCategory",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "issuanceRequestId": {
+          "$ref": "common.schema.json#/$defs/issuanceRequestId"
+        },
+        "rps": {
+          "$ref": "common.schema.json#/$defs/rps"
+        },
+        "attempt": {
+          "$ref": "common.schema.json#/$defs/attempt"
+        },
+        "errorCategory": {
+          "$ref": "common.schema.json#/$defs/errorCategory"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifacts": {
+          "$ref": "common.schema.json#/$defs/failureArtifacts"
+        }
+      }
+    }
+  }
+}
