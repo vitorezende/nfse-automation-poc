@@ -1,0 +1,13 @@
+<h1>Solicitações de Emissão</h1>
+<div class="card">
+  {{#if requests.length}}
+  <table>
+    <tr><th>RPS</th><th>Prestador</th><th>Tomador</th><th>Valor</th><th>Status</th></tr>
+    {{#each requests}}
+    <tr><td><a href="/solicitacoes/{{id}}">{{rps}}</a></td><td>{{prestador}}</td><td>{{tomador}}</td><td>{{amount}}</td><td><span class="badge {{status}}">{{statusLabel}}</span></td></tr>
+    {{/each}}
+  </table>
+  {{else}}
+  <p>Nenhuma Solicitação ainda. <a href="/solicitacoes/nova">Criar a primeira</a>.</p>
+  {{/if}}
+</div>

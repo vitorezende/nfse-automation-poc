@@ -3,14 +3,33 @@
 name: nfse-automation-poc
 
 services:
+  # Portal da Contabilidade: creates Solicitações de Emissão and dispatches IssueNfse via the outbox.
+  accounting-portal:
+    build: ./services/accounting-portal
+    ports:
+      - "3000:3000" # http://localhost:3000
+    environment:
+      DATABASE_URL: postgresql://poc:poc@postgres:5432/accounting
+      RABBITMQ_URL: amqp://poc:poc@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
   rabbitmq:
     image: rabbitmq:4.1-management-alpine
     ports:
       - "5672:5672"
       - "15672:15672" # management UI: http://localhost:15672 (poc / poc)
-    environment:
-      RABBITMQ_DEFAULT_USER: poc
-      RABBITMQ_DEFAULT_PASS: poc
+    volumes:
+      # Users and topology (robot.issue-nfse queue, nfse.events exchange) live in the definitions file.
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./infra/rabbitmq/10-definitions.conf:/etc/rabbitmq/conf.d/10-definitions.conf:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
