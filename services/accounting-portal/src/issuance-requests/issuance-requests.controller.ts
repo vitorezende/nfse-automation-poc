@@ -1,6 +1,7 @@
 import { Body, ConflictException, Controller, Get, type MessageEvent, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse } from '@nestjs/common';
 import hbs from 'hbs';
 import { concat, defer, filter, from, Observable, switchMap } from 'rxjs';
+import type { TimelineEntry } from '../generated/prisma/client.js';
 import { DocumentLinks } from '../storage/document-links.js';
 import { IssuanceUpdates } from './issuance-updates.js';
 import type { Response } from 'express';
@@ -39,12 +40,16 @@ function toView(request: IssuanceRequestWithPrestador) {
     nfseVerificationCode: request.nfseVerificationCode,
     nfseIssuedAt: request.nfseIssuedAt ? formatDate(request.nfseIssuedAt) : null,
     failureReason: request.failureReason,
-    timeline: (request.timeline ?? []).map((entry) => ({
-      occurredAt: formatDate(entry.occurredAt),
-      label: EVENT_LABELS[entry.type] ?? entry.type,
-      attempt: entry.attempt > 0 ? entry.attempt : '',
-      detail: entry.detail,
-    })),
+    timeline: (request.timeline ?? []).map(timelineEntryView),
+  };
+}
+
+function timelineEntryView(entry: TimelineEntry) {
+  return {
+    occurredAt: formatDate(entry.occurredAt),
+    label: EVENT_LABELS[entry.type] ?? entry.type,
+    attempt: entry.attempt > 0 ? entry.attempt : '',
+    detail: entry.detail,
   };
 }
 
@@ -62,15 +67,22 @@ export class IssuanceRequestsController {
     private readonly documentLinks: DocumentLinks,
   ) {}
 
-  /** The view model plus presigned document links once the NFS-e exists. */
+  /** The view model plus presigned links: NFS-e documents once issued, failure artifacts per timeline entry. */
   private async view(request: IssuanceRequestWithPrestador) {
-    const view = toView(request);
-    if (!request.documentsBucket || !request.nfseXmlKey || !request.nfsePdfKey) return view;
+    const link = (bucket: string | null, key: string | null, filename: string) =>
+      bucket && key ? this.documentLinks.link(bucket, key, filename) : Promise.resolve(null);
+    const timeline = Promise.all(
+      (request.timeline ?? []).map(async (entry) => ({
+        ...timelineEntryView(entry),
+        screenshotUrl: await link(entry.screenshotBucket, entry.screenshotKey, `screenshot-attempt-${entry.attempt}.png`),
+        traceUrl: await link(entry.traceBucket, entry.traceKey, `trace-attempt-${entry.attempt}.zip`),
+      })),
+    );
     const [xmlUrl, pdfUrl] = await Promise.all([
-      this.documentLinks.link(request.documentsBucket, request.nfseXmlKey, `nfse-${request.nfseNumber}.xml`),
-      this.documentLinks.link(request.documentsBucket, request.nfsePdfKey, `danfse-${request.nfseNumber}.pdf`),
+      link(request.documentsBucket, request.nfseXmlKey, `nfse-${request.nfseNumber}.xml`),
+      link(request.documentsBucket, request.nfsePdfKey, `danfse-${request.nfseNumber}.pdf`),
     ]);
-    return { ...view, xmlUrl, pdfUrl };
+    return { ...toView(request), timeline: await timeline, xmlUrl, pdfUrl };
   }
 
   @Get()

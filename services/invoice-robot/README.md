@@ -31,6 +31,17 @@ transient failure (HTTP 5xx, timeout, browser)   → NfseIssuanceAttemptFailed(t
 unexpected error (e.g. no broker confirm)        → 3 in-process tries (1s, 2s, 4s), then parked in the DLQ
 ```
 
+## Failure artifacts
+
+Every attempt runs under a Playwright trace (screenshots + DOM snapshots). On success the trace is discarded. On any failure on the Prefeitura's pages, business or transient, the robot uploads a full-page screenshot and the trace to object storage:
+
+```text
+<issuanceRequestId>/failures/<command messageId>/attempt-<n>/screenshot.png
+<issuanceRequestId>/failures/<command messageId>/attempt-<n>/trace.zip
+```
+
+The references travel in `payload.artifacts` of `NfseIssuanceAttemptFailed` / `NfseIssuanceFailed`. The command's `messageId` is part of the key, so a Reprocessamento (a new command whose attempts restart at 1) never overwrites earlier evidence. Failures before the browser has a page (unknown `credentialRef`, a browser that won't launch) and claim-check uploads after issuance carry no artifacts: there is no page to show. When retries run out, `NfseIssuanceFailed` repeats the last attempt's references. Recording is best effort: if an upload fails, the event goes out without that reference and the attempt's outcome doesn't change. Open a trace with `npx playwright show-trace trace.zip` or at https://trace.playwright.dev.
+
 Each page step waits for an explicit outcome (the logged-in menu or an alert, the NFS-e number or an alert), never for a bare load state. Every navigation checks the HTTP status.
 
 Every log line carries the instance hostname, the thread and the command's correlation ID.

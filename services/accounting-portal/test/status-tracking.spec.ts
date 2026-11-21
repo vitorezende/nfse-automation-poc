@@ -103,6 +103,28 @@ describe('Solicitação status tracking', () => {
     }, { timeout: 10_000 });
   });
 
+  it('links the screenshot and trace of a failed attempt on the timeline', async () => {
+    const { location, command } = await dispatchedRequest();
+    const id = command.payload.issuanceRequestId;
+    const prefix = `${id}/failures/${command.messageId}/attempt-1`;
+    await publish(command, 'NfseIssuanceAttemptFailed', {
+      errorCategory: 'transient',
+      reason: 'Prefeitura em manutenção',
+      artifacts: {
+        screenshot: { bucket: 'nfse-documents', key: `${prefix}/screenshot.png` },
+        trace: { bucket: 'nfse-documents', key: `${prefix}/trace.zip` },
+      },
+    });
+    await vi.waitFor(async () => expect(await page(location)).toContain('Prefeitura em manutenção'), { timeout: 10_000 });
+    const html = await page(location);
+    const decode = (value?: string) => value?.replace(/&#x3D;/g, '=').replace(/&amp;/g, '&');
+    const screenshotLink = decode(html.match(/data-artifact="screenshot" href="([^"]+)"/)?.[1]);
+    const traceLink = decode(html.match(/data-artifact="trace" href="([^"]+)"/)?.[1]);
+    expect(screenshotLink).toContain(`http://localhost:8333/nfse-documents/${prefix}/screenshot.png?`);
+    expect(screenshotLink).toContain('X-Amz-Signature=');
+    expect(traceLink).toContain(`/nfse-documents/${prefix}/trace.zip?`);
+  });
+
   it('ignores a duplicate event', async () => {
     const { location, command } = await dispatchedRequest();
     const event = eventFor(command, 'NfseIssuanceAttemptFailed', { errorCategory: 'transient', reason: 'Duplicada' });

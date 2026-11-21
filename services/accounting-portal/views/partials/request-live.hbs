@@ -26,7 +26,7 @@
   <table>
     <tr><th>Quando</th><th>Evento</th><th>Tentativa</th><th>Detalhe</th></tr>
     {{#each request.timeline}}
-    <tr><td>{{occurredAt}}</td><td>{{label}}</td><td>{{attempt}}</td><td>{{detail}}</td></tr>
+    <tr><td>{{occurredAt}}</td><td>{{label}}</td><td>{{attempt}}</td><td>{{detail}}{{#if screenshotUrl}} · <a data-artifact="screenshot" href="{{screenshotUrl}}">Captura de tela</a>{{/if}}{{#if traceUrl}} · <a data-artifact="trace" href="{{traceUrl}}">Trace do Playwright</a>{{/if}}</td></tr>
     {{/each}}
   </table>
   {{else}}

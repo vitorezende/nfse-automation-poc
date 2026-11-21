@@ -98,6 +98,11 @@ model TimelineEntry {
   attempt           Int
   detail            String?
   occurredAt        DateTime
+  /// Screenshot and Playwright trace of a failed attempt, stored in object storage by the robot.
+  screenshotBucket  String?
+  screenshotKey     String?
+  traceBucket       String?
+  traceKey          String?
 
   @@index([issuanceRequestId, occurredAt])
 }

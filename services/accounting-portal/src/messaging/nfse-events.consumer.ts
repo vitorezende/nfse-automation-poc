@@ -5,6 +5,11 @@ import { IssuanceUpdates } from '../issuance-requests/issuance-updates.js';
 import { PrismaService } from '../prisma.service.js';
 import { ContractValidator } from './contract-validator.js';
 
+interface ObjectRef {
+  bucket: string;
+  key: string;
+}
+
 interface NfseEvent {
   messageId: string;
   correlationId: string;
@@ -16,7 +21,8 @@ interface NfseEvent {
     reason?: string;
     errorCategory?: string;
     nfse?: { number: string; verificationCode: string; issuedAt: string };
-    documents?: { xml: { bucket: string; key: string }; pdf: { bucket: string; key: string } };
+    documents?: { xml: ObjectRef; pdf: ObjectRef };
+    artifacts?: { screenshot?: ObjectRef; trace?: ObjectRef };
   };
 }
 
@@ -79,6 +85,10 @@ export class NfseEventsConsumer {
             attempt,
             detail: this.detail(event),
             occurredAt: new Date(event.occurredAt),
+            screenshotBucket: event.payload.artifacts?.screenshot?.bucket,
+            screenshotKey: event.payload.artifacts?.screenshot?.key,
+            traceBucket: event.payload.artifacts?.trace?.bucket,
+            traceKey: event.payload.artifacts?.trace?.key,
           },
         });
         const transition = TRANSITIONS[event.type];

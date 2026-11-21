@@ -17,11 +17,11 @@
     "artifacts": {
       "screenshot": {
         "bucket": "nfse-documents",
-        "key": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a/attempt-1/screenshot.png"
+        "key": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a/failures/6f1c2d3e-4a5b-4c6d-8e7f-901234567890/attempt-1/screenshot.png"
       },
       "trace": {
         "bucket": "nfse-documents",
-        "key": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a/attempt-1/trace.zip"
+        "key": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a/failures/6f1c2d3e-4a5b-4c6d-8e7f-901234567890/attempt-1/trace.zip"
       }
     }
   }

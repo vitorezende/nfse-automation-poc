@@ -51,7 +51,7 @@ public class IssueNfseListener {
       log.info("Issuing NFS-e for Solicitação {} (RPS {}/{}), attempt {}", command.payload().issuanceRequestId(),
           command.payload().rps().number(), command.payload().rps().series(), attempt);
       if (issuance.attempt(command, attempt) instanceof IssuanceOutcome.TransientFailure failure) {
-        retries.onTransientFailure(message, command, attempt, failure.reason());
+        retries.onTransientFailure(message, command, attempt, failure.reason(), failure.artifacts());
       }
     } catch (IOException e) {
       throw new AmqpRejectAndDontRequeueException("Unreadable IssueNfse", e);
