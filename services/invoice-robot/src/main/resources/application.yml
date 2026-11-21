@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: invoice-robot
+  main:
+    banner-mode: off
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:poc}
+    password: ${RABBITMQ_PASSWORD:poc}
+    publisher-confirm-type: correlated
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 1
+        concurrency: 1
+        # Until retries arrive (#9), a failed command is not requeued in a tight loop.
+        default-requeue-rejected: false
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+robot:
+  city-hall-url: ${CITY_HALL_URL:http://localhost:3001}
+  credentials-file: ${CREDENTIALS_FILE:../../infra/robot/credentials.json}
+  headless: ${HEADLESS:true}
+  navigation-timeout: ${NAVIGATION_TIMEOUT:15s}
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%X{correlationId:-}] %logger{20} - %msg%n"

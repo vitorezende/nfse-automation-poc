@@ -94,6 +94,23 @@ services:
       timeout: 5s
       retries: 24
 
+  # Robô de Emissão: consumes IssueNfse, drives the Portal da Prefeitura with Playwright, publishes events.
+  invoice-robot:
+    build:
+      context: .
+      dockerfile: services/invoice-robot/Dockerfile
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      CITY_HALL_URL: http://city-hall-portal:3001
+      CREDENTIALS_FILE: /run/secrets/robot-credentials.json
+    volumes:
+      - ./infra/robot/credentials.json:/run/secrets/robot-credentials.json:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      city-hall-portal:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   object-storage-data:
