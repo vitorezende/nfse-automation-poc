@@ -144,8 +144,8 @@ public class IssuanceService {
   }
 
   /**
-   * One readable line for the timeline. Playwright for Java wraps its errors as {@code Error \{ message='...'
-   * name='TimeoutError' ... \}}, so the cause is taken from the message field when present.
+   * One readable line for the timeline. Playwright for Java wraps its errors in a multi-line "Error { message='...'
+   * name='TimeoutError' ... }" block, so the cause is taken from the message field when present.
    */
   private static String summarize(String message) {
     String line = message.lines()
