@@ -35,9 +35,13 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    if (this.chaos.current().captcha && (body.captcha ?? '').trim() !== req.session.captchaAnswer) {
-      this.renderLogin(req, res, { error: 'Captcha inválido.', username: body.username });
-      return;
+    if (this.chaos.current().captcha) {
+      const expected = req.session.captchaAnswer;
+      delete req.session.captchaAnswer; // single use: every login attempt needs a fresh challenge
+      if (!expected || (body.captcha ?? '').trim() !== expected) {
+        this.renderLogin(req, res, { error: 'Captcha inválido.', username: body.username });
+        return;
+      }
     }
     const prestador = body.username
       ? await this.prisma.prestador.findUnique({ where: { username: body.username.trim() } })
