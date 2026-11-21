@@ -60,6 +60,11 @@ model IssuanceRequest {
   /// Set when the operator clicks Emitir; the status only becomes DISPATCHED once the command is published.
   dispatchRequestedAt DateTime?
   createdAt           DateTime              @default(now())
+  nfseNumber          String?
+  nfseVerificationCode String?
+  nfseIssuedAt        DateTime?
+  failureReason       String?
+  timeline            TimelineEntry[]
 
   @@unique([prestadorId, rpsNumber, rpsSeries])
 }
@@ -75,4 +80,24 @@ model OutboxMessage {
   publishedAt       DateTime?
 
   @@index([publishedAt, createdAt])
+}
+
+/// One NFS-e event received for a Solicitação, shown on its timeline.
+model TimelineEntry {
+  id                Int             @id @default(autoincrement())
+  issuanceRequest   IssuanceRequest @relation(fields: [issuanceRequestId], references: [id])
+  issuanceRequestId String          @db.Uuid
+  messageId         String          @db.Uuid
+  type              String
+  attempt           Int
+  detail            String?
+  occurredAt        DateTime
+
+  @@index([issuanceRequestId, occurredAt])
+}
+
+/// Inbox: messageIds already handled, so redelivered events are discarded (at-least-once delivery).
+model ProcessedMessage {
+  messageId   String   @id @db.Uuid
+  processedAt DateTime @default(now())
 }

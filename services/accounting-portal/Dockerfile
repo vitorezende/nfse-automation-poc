@@ -1,20 +1,22 @@
+# Build context: repository root (the app validates events against contracts/schemas at runtime).
 FROM node:24-alpine AS build
 WORKDIR /app
 RUN apk add --no-cache openssl
-COPY package.json package-lock.json ./
+COPY services/accounting-portal/package.json services/accounting-portal/package-lock.json ./
 RUN npm ci
-COPY . .
+COPY services/accounting-portal/ .
 RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine
 WORKDIR /app
 RUN apk add --no-cache openssl
-ENV NODE_ENV=production
+ENV NODE_ENV=production CONTRACTS_SCHEMAS_DIR=/app/contracts/schemas
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/views ./views
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts /app/package.json ./
+COPY contracts/schemas ./contracts/schemas
 EXPOSE 3000
 # Apply migrations and the idempotent seed, then serve.
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js && node dist/main.js"]
