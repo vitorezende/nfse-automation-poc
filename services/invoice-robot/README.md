@@ -18,7 +18,8 @@ transient failure (HTTP 5xx, timeout, browser)   → NfseIssuanceAttemptFailed(t
     attempt ≤ 3 → republish to robot.issue-nfse.retry-N with expiration 10s | 1m | 5m and x-attempt+1
                   (dead-lettered back to robot.issue-nfse when it expires)
     attempt = 4 → park in robot.issue-nfse.dlq, NfseIssuanceFailed(transient)
-    every republish is broker-confirmed before the original is acked; events follow the confirm
+    every republish is broker-confirmed before the original is acked; AttemptFailed is best effort after it,
+    and on the DLQ path NfseIssuanceFailed is published before parking (a failure there is safe to repeat)
 
 unexpected error (e.g. no broker confirm)        → 3 in-process tries (1s, 2s, 4s), then parked in the DLQ
 ```
