@@ -4,7 +4,7 @@ Onde o Escritório Contábil cria Solicitações de Emissão e as envia ao Robô
 
 ## Fluxo
 
-1. **Nova Solicitação**: escolha um Prestador e um Serviço do seu Catálogo de Serviços e informe o Tomador, o valor, a Competência e a Discriminação. A Solicitação é salva como **Rascunho** com o próximo número de RPS do Prestador. A Competência deve estar no formato `AAAA-MM`; `MM/AAAA` também é aceito e convertido.
+1. **Nova Solicitação**: o formulário abre preenchido com dados de exemplo válidos, prontos para salvar. Escolha um Prestador e um Serviço do seu Catálogo de Serviços e informe o Tomador, o valor, a Competência e a Discriminação. A Solicitação é salva como **Rascunho** com o próximo número de RPS do Prestador. A Competência deve estar no formato `AAAA-MM`; `MM/AAAA` também é aceito e convertido.
 2. **Emitir**: em uma única transação no banco, registra a intenção e grava um comando `IssueNfse` no outbox. Enquanto não é publicado, o status mostra "Rascunho (envio pendente)".
 3. **Relay do outbox**: consulta as linhas pendentes, publica-as na fila `robot.issue-nfse` com publisher confirms e marca a Solicitação como **Enviada**. Se o broker estiver fora do ar, as linhas continuam pendentes e são tentadas de novo.
 4. **Acompanhamento de status**: consome os eventos do robô em `accounting.nfse-events` (ligada a `nfse.events`), validados contra `contracts/schemas`:

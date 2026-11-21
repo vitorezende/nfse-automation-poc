@@ -108,7 +108,7 @@ Execute a partir de um clone novo. Cada passo diz o que observar.
 ### 1. Caminho feliz: criar → enviar → Emitida
 
 1. `docker compose down -v && docker compose up -d --build --wait`
-2. Abra http://localhost:3000 e clique em **Nova Solicitação**. Mantenha **ACME Tecnologia Ltda** e o primeiro Serviço, preencha um Tomador (qualquer CNPJ, por exemplo `22.222.222/0001-22`), um valor (`1500.00`), a Competência (`2026-11`; `11/2026` também é aceito) e uma Discriminação, e clique em **Salvar como Rascunho**.
+2. Abra http://localhost:3000 e clique em **Nova Solicitação**. O formulário já vem preenchido com dados de exemplo (ACME Tecnologia Ltda, Tomador `22.222.222/0001-22`, `1500.00`, Competência do mês atual); altere o que quiser e clique em **Salvar como Rascunho**. A Competência aceita `AAAA-MM` ou `MM/AAAA`.
 3. Clique em **Emitir**. Sem recarregar a página, o status passa por **Enviada → Em processamento → Emitida**: os eventos chegam à página via SSE.
 4. A página mostra o número da NFS-e e o código de verificação, com links para o **XML** e o **DANFSe (PDF)** servidos pelo armazenamento de objetos.
 5. Entre em http://localhost:3001 como `acme` / `acme-pass`. Em **Consultar NFS-e por RPS**, o mesmo RPS mostra a mesma NFS-e.

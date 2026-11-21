@@ -19,6 +19,21 @@ function field(html: string, name: string): string | undefined {
   return html.match(new RegExp(`data-field="${name}"[^>]*>([^<]*)<`))?.[1].trim();
 }
 
+/** Reads what a browser would submit from the Nova Solicitação form: inputs, selected options, textareas. */
+function formValues(html: string): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const [tag] of html.matchAll(/<input\b[^>]*>/g)) {
+    const name = tag.match(/name="([^"]*)"/)?.[1];
+    if (name) values[name] = tag.match(/value="([^"]*)"/)?.[1] ?? '';
+  }
+  for (const [, name, options] of html.matchAll(/<select[^>]*name="([^"]*)"[^>]*>([\s\S]*?)<\/select>/g)) {
+    const chosen = options.match(/<option value="([^"]*)"[^>]*selected/) ?? options.match(/<option value="([^"]*)"/);
+    if (chosen) values[name] = chosen[1];
+  }
+  for (const [, name, text] of html.matchAll(/<textarea[^>]*name="([^"]*)"[^>]*>([\s\S]*?)<\/textarea>/g)) values[name] = text;
+  return values;
+}
+
 async function createIssuanceRequest(overrides: Record<string, string> = {}) {
   const response = await http()
     .post('/solicitacoes')
@@ -125,6 +140,32 @@ describe('Solicitação de Emissão', () => {
       .send({ prestadorCnpj: '11.111.111/0001-11', servicoCode: '01.07', tomadorCnpj: '1', tomadorName: 'X', amount: '10.00', competencia, discriminacao: 'X' });
     expect(response.status).toBe(422);
     expect(response.text).toContain('Informe a competência no formato AAAA-MM, por exemplo 2026-11.');
+  });
+
+  it('opens Nova Solicitação already filled in, ready to be saved as is', async () => {
+    const page = (await http().get('/solicitacoes/nova').expect(200)).text;
+    const form = formValues(page);
+    expect(form).toMatchObject({
+      prestadorCnpj: '11.111.111/0001-11',
+      tomadorCnpj: '22.222.222/0001-22',
+      tomadorName: 'Tomador Exemplo Ltda',
+      amount: '1500.00',
+      discriminacao: 'Suporte técnico mensal',
+    });
+    expect(form.competencia).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);
+
+    const response = await http().post('/solicitacoes').type('form').send(form);
+    expect(response.status).toBe(302);
+    expect(field((await http().get(response.headers.location)).text, 'status')).toBe('Rascunho');
+  });
+
+  it('keeps what the operator typed when a submission is rejected', async () => {
+    const response = await http()
+      .post('/solicitacoes')
+      .type('form')
+      .send({ prestadorCnpj: '11.111.111/0001-11', servicoCode: '01.07', tomadorCnpj: '9', tomadorName: 'Cliente Digitado', amount: '10.00', competencia: '13/2026', discriminacao: 'Texto digitado' });
+    expect(response.status).toBe(422);
+    expect(formValues(response.text)).toMatchObject({ tomadorName: 'Cliente Digitado', competencia: '13/2026', discriminacao: 'Texto digitado' });
   });
 
   it('rejects a Serviço outside the Prestador catalogue', async () => {
