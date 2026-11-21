@@ -1,0 +1,121 @@
+asyncapi: 3.0.0
+info:
+  title: Robô de Emissão messaging API
+  version: 1.0.0
+  description: |
+    Messaging contract between the Portal da Contabilidade and the Robô de Emissão (ADR 0003).
+    Commands go out to a queue owned by the robot; events come back on a topic exchange.
+    Every message is wrapped in the standard envelope (schemas/envelope.schema.json).
+    All data is fictitious: no real NFS-e is ever issued.
+
+defaultContentType: application/json
+
+servers:
+  local:
+    host: rabbitmq:5672
+    protocol: amqp
+    description: RabbitMQ started by the root docker-compose.yml.
+
+channels:
+  issueNfse:
+    address: robot.issue-nfse
+    description: Command queue owned by the Robô de Emissão; exactly one robot instance handles each command.
+    messages:
+      IssueNfse:
+        $ref: '#/components/messages/IssueNfse'
+    bindings:
+      amqp:
+        is: queue
+        queue:
+          name: robot.issue-nfse
+          durable: true
+          exclusive: false
+          autoDelete: false
+  nfseIssuanceStarted:
+    address: nfse.issuance.started
+    messages:
+      NfseIssuanceStarted:
+        $ref: '#/components/messages/NfseIssuanceStarted'
+    bindings:
+      $ref: '#/components/channelBindings/nfseEventsExchange'
+  nfseIssuanceAttemptFailed:
+    address: nfse.issuance.attempt-failed
+    messages:
+      NfseIssuanceAttemptFailed:
+        $ref: '#/components/messages/NfseIssuanceAttemptFailed'
+    bindings:
+      $ref: '#/components/channelBindings/nfseEventsExchange'
+  nfseIssued:
+    address: nfse.issued
+    messages:
+      NfseIssued:
+        $ref: '#/components/messages/NfseIssued'
+    bindings:
+      $ref: '#/components/channelBindings/nfseEventsExchange'
+  nfseIssuanceFailed:
+    address: nfse.issuance.failed
+    messages:
+      NfseIssuanceFailed:
+        $ref: '#/components/messages/NfseIssuanceFailed'
+    bindings:
+      $ref: '#/components/channelBindings/nfseEventsExchange'
+
+operations:
+  receiveIssueNfse:
+    action: receive
+    summary: The robot consumes IssueNfse commands sent by the Portal da Contabilidade.
+    channel:
+      $ref: '#/channels/issueNfse'
+  sendNfseIssuanceStarted:
+    action: send
+    channel:
+      $ref: '#/channels/nfseIssuanceStarted'
+  sendNfseIssuanceAttemptFailed:
+    action: send
+    channel:
+      $ref: '#/channels/nfseIssuanceAttemptFailed'
+  sendNfseIssued:
+    action: send
+    channel:
+      $ref: '#/channels/nfseIssued'
+  sendNfseIssuanceFailed:
+    action: send
+    channel:
+      $ref: '#/channels/nfseIssuanceFailed'
+
+components:
+  channelBindings:
+    nfseEventsExchange:
+      amqp:
+        is: routingKey
+        exchange:
+          name: nfse.events
+          type: topic
+          durable: true
+          autoDelete: false
+  messages:
+    IssueNfse:
+      name: IssueNfse
+      summary: Issue one NFS-e for a Solicitação de Emissão.
+      payload:
+        $ref: './schemas/issue-nfse.schema.json'
+    NfseIssuanceStarted:
+      name: NfseIssuanceStarted
+      summary: The robot started an issuance attempt.
+      payload:
+        $ref: './schemas/nfse-issuance-started.schema.json'
+    NfseIssuanceAttemptFailed:
+      name: NfseIssuanceAttemptFailed
+      summary: One attempt failed; informational.
+      payload:
+        $ref: './schemas/nfse-issuance-attempt-failed.schema.json'
+    NfseIssued:
+      name: NfseIssued
+      summary: The NFS-e was issued (or found by RPS); documents by reference.
+      payload:
+        $ref: './schemas/nfse-issued.schema.json'
+    NfseIssuanceFailed:
+      name: NfseIssuanceFailed
+      summary: Issuance failed for good.
+      payload:
+        $ref: './schemas/nfse-issuance-failed.schema.json'

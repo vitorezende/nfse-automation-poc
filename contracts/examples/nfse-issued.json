@@ -1,0 +1,31 @@
+{
+  "messageId": "a1000000-0000-4000-8000-000000000003",
+  "correlationId": "0b8f9a10-2c3d-4e5f-8a6b-7c8d9e0f1a2b",
+  "causationId": "6f1c2d3e-4a5b-4c6d-8e7f-901234567890",
+  "type": "NfseIssued",
+  "version": 1,
+  "occurredAt": "2026-11-21T10:15:45Z",
+  "payload": {
+    "issuanceRequestId": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a",
+    "rps": {
+      "number": 42,
+      "series": "A"
+    },
+    "attempt": 2,
+    "nfse": {
+      "number": "2026000123",
+      "verificationCode": "X7K2-PQ9M",
+      "issuedAt": "2026-11-21T10:15:40Z"
+    },
+    "documents": {
+      "xml": {
+        "bucket": "nfse-documents",
+        "key": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a/nfse.xml"
+      },
+      "pdf": {
+        "bucket": "nfse-documents",
+        "key": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a/danfse.pdf"
+      }
+    }
+  }
+}

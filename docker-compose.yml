@@ -1,0 +1,63 @@
+# Shared infrastructure for the NFS-e automation POC.
+# All credentials below are local, fake and for demo purposes only.
+name: nfse-automation-poc
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI: http://localhost:15672 (poc / poc)
+    environment:
+      RABBITMQ_DEFAULT_USER: poc
+      RABBITMQ_DEFAULT_PASS: poc
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: poc
+      POSTGRES_PASSWORD: poc
+    volumes:
+      - ./infra/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Healthy only once both service databases exist.
+      test: ["CMD-SHELL", "psql -U poc -d accounting -c 'select 1' && psql -U poc -d city_hall -c 'select 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # S3-compatible object storage for the claim check (ADR 0004).
+  object-storage:
+    image: chrislusf/seaweedfs:3.97
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      - "8333:8333" # S3 API
+    volumes:
+      - ./infra/object-storage/s3.json:/etc/seaweedfs/s3.json:ro
+      - object-storage-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  # One-shot job creating the NFS-e documents bucket.
+  object-storage-init:
+    image: chrislusf/seaweedfs:3.97
+    depends_on:
+      object-storage:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "echo 's3.bucket.create -name nfse-documents' | weed shell -master=object-storage:9333"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  object-storage-data:

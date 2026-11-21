@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nfse-poc.example/schemas/nfse-issuance-started.schema.json",
+  "title": "NfseIssuanceStarted",
+  "description": "The Robô de Emissão started an attempt to issue the NFS-e.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "NfseIssuanceStarted"
+    },
+    "version": {
+      "const": 1
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "issuanceRequestId",
+        "rps",
+        "attempt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "issuanceRequestId": {
+          "$ref": "common.schema.json#/$defs/issuanceRequestId"
+        },
+        "rps": {
+          "$ref": "common.schema.json#/$defs/rps"
+        },
+        "attempt": {
+          "$ref": "common.schema.json#/$defs/attempt"
+        }
+      }
+    }
+  }
+}

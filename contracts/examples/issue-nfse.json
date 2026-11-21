@@ -1,0 +1,18 @@
+{
+  "messageId": "6f1c2d3e-4a5b-4c6d-8e7f-901234567890",
+  "correlationId": "0b8f9a10-2c3d-4e5f-8a6b-7c8d9e0f1a2b",
+  "causationId": null,
+  "type": "IssueNfse",
+  "version": 1,
+  "occurredAt": "2026-11-21T10:15:00Z",
+  "payload": {
+    "issuanceRequestId": "3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a",
+    "rps": { "number": 42, "series": "A" },
+    "prestador": { "cnpj": "11.111.111/0001-11", "credentialRef": "prestador-acme" },
+    "tomador": { "cnpj": "22.222.222/0001-22", "name": "Tomador Exemplo Ltda" },
+    "servico": { "code": "01.07", "description": "Suporte técnico em informática", "issRate": 0.05 },
+    "amount": "1500.00",
+    "competencia": "2026-11",
+    "discriminacao": "Suporte técnico mensal referente a novembro/2026"
+  }
+}

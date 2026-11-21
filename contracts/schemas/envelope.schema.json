@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nfse-poc.example/schemas/envelope.schema.json",
+  "title": "Message envelope",
+  "description": "Standard envelope wrapping every command and event (ADR 0003).",
+  "type": "object",
+  "required": ["messageId", "correlationId", "causationId", "type", "version", "occurredAt", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "messageId": { "type": "string", "format": "uuid", "description": "Unique per message; consumers deduplicate on it." },
+    "correlationId": { "type": "string", "format": "uuid", "description": "Shared by every message about the same Solicitação de Emissão." },
+    "causationId": { "type": ["string", "null"], "format": "uuid", "description": "messageId of the message that caused this one; null when caused by a user action." },
+    "type": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "payload": { "type": "object" }
+  }
+}
