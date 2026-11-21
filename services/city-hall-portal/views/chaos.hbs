@@ -1,0 +1,10 @@
+<h2>Modo caos</h2>
+<p>Injeta falhas realistas no portal para demonstrar a resiliência do Robô de Emissão. As configurações valem imediatamente.</p>
+<form method="post" action="/admin/chaos">
+  <table class="form">
+    <tr><td class="label"><label for="latencyMinMs">Latência mínima (ms)</label></td><td><input type="text" id="latencyMinMs" name="latencyMinMs" value="{{settings.latencyMinMs}}"></td></tr>
+    <tr><td class="label"><label for="latencyMaxMs">Latência máxima (ms)</label></td><td><input type="text" id="latencyMaxMs" name="latencyMaxMs" value="{{settings.latencyMaxMs}}"></td></tr>
+    <tr><td class="label"><label for="submitErrorPercent">Erro 500 na emissão (%)</label></td><td><input type="text" id="submitErrorPercent" name="submitErrorPercent" value="{{settings.submitErrorPercent}}"></td></tr>
+    <tr><td></td><td><button type="submit" class="btn">Aplicar</button></td></tr>
+  </table>
+</form>

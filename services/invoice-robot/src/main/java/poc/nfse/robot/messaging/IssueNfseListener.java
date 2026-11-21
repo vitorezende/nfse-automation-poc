@@ -11,6 +11,7 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import poc.nfse.robot.issuance.IssuanceOutcome;
 import poc.nfse.robot.issuance.IssuanceService;
 import poc.nfse.robot.issuance.IssueNfseCommand;
 
@@ -26,11 +27,13 @@ public class IssueNfseListener {
   private final ContractValidator contracts;
   private final ObjectMapper json;
   private final IssuanceService issuance;
+  private final RetryScheduler retries;
 
-  public IssueNfseListener(ContractValidator contracts, ObjectMapper json, IssuanceService issuance) {
+  public IssueNfseListener(ContractValidator contracts, ObjectMapper json, IssuanceService issuance, RetryScheduler retries) {
     this.contracts = contracts;
     this.json = json;
     this.issuance = issuance;
+    this.retries = retries;
   }
 
   @RabbitListener(queues = "robot.issue-nfse")
@@ -44,14 +47,22 @@ public class IssueNfseListener {
         throw new AmqpRejectAndDontRequeueException("Contract violation");
       }
       IssueNfseCommand command = json.treeToValue(body, IssueNfseCommand.class);
-      log.info("Issuing NFS-e for Solicitação {} (RPS {}/{})", command.payload().issuanceRequestId(),
-          command.payload().rps().number(), command.payload().rps().series());
-      issuance.issue(command, 1);
+      int attempt = attemptOf(message);
+      log.info("Issuing NFS-e for Solicitação {} (RPS {}/{}), attempt {}", command.payload().issuanceRequestId(),
+          command.payload().rps().number(), command.payload().rps().series(), attempt);
+      if (issuance.attempt(command, attempt) instanceof IssuanceOutcome.TransientFailure failure) {
+        retries.onTransientFailure(message, command, attempt, failure.reason());
+      }
     } catch (IOException e) {
       throw new AmqpRejectAndDontRequeueException("Unreadable IssueNfse", e);
     } finally {
       MDC.remove("correlationId");
     }
+  }
+
+  private static int attemptOf(Message message) {
+    Object header = message.getMessageProperties().getHeader(RetryScheduler.ATTEMPT_HEADER);
+    return header instanceof Number n ? n.intValue() : 1;
   }
 
   private JsonNode parse(Message message) {

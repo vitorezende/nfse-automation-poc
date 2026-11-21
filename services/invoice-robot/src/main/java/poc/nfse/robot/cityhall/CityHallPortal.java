@@ -2,6 +2,7 @@ package poc.nfse.robot.cityhall;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.AriaRole;
 import java.math.RoundingMode;
 import java.net.URLEncoder;
@@ -14,6 +15,7 @@ import poc.nfse.robot.credentials.CredentialStore.Credentials;
 import poc.nfse.robot.issuance.BusinessFailureException;
 import poc.nfse.robot.issuance.IssueNfseCommand;
 import poc.nfse.robot.issuance.IssuedNfse;
+import poc.nfse.robot.issuance.TransientFailureException;
 
 /**
  * Page operations on the Portal da Prefeitura, driven the way a person would: by visible labels and texts.
@@ -33,10 +35,10 @@ public class CityHallPortal {
   }
 
   public void login(Credentials credentials) {
-    page.navigate(baseUrl + "/login");
+    open("/login");
     page.getByLabel("Usuário", new Page.GetByLabelOptions().setExact(true)).fill(credentials.username());
     page.getByLabel("Senha", new Page.GetByLabelOptions().setExact(true)).fill(credentials.password());
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Entrar")).click();
+    submit("Entrar");
     // Wait for an outcome, not a load state: either the logged-in menu or a refusal.
     Locator loggedIn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sair"));
     Locator error = page.getByRole(AriaRole.ALERT);
@@ -46,19 +48,18 @@ public class CityHallPortal {
 
   /** The NFS-e already issued for this RPS, if any: the Prefeitura's own idempotency check (ADR 0002). */
   public Optional<IssuedNfse> findByRps(IssueNfseCommand.Rps rps) {
-    page.navigate(baseUrl + "/nfse/consulta?rpsNumber=" + rps.number()
-        + "&rpsSeries=" + URLEncoder.encode(rps.series(), StandardCharsets.UTF_8));
+    open("/nfse/consulta?rpsNumber=" + rps.number() + "&rpsSeries=" + URLEncoder.encode(rps.series(), StandardCharsets.UTF_8));
     Locator result = page.locator("#resultado");
     Locator notFound = result.getByText("Nenhuma NFS-e encontrada");
     Locator found = result.getByRole(AriaRole.LINK).first();
     notFound.or(found).first().waitFor();
     if (notFound.isVisible()) return Optional.empty();
-    found.click();
+    checkStatus(page.waitForResponse(response -> response.request().isNavigationRequest(), found::click), "NFS-e detail");
     return Optional.of(readDetail());
   }
 
   public IssuedNfse issue(IssueNfseCommand.Payload payload) {
-    page.navigate(baseUrl + "/nfse/emitir");
+    open("/nfse/emitir");
     fill("Número do RPS", String.valueOf(payload.rps().number()));
     fill("Série do RPS", payload.rps().series());
     fill("CNPJ do tomador", payload.tomador().cnpj());
@@ -69,13 +70,31 @@ public class CityHallPortal {
     fill("Valor do serviço (R$)", payload.amount());
     fill("Competência", payload.competencia());
     fill("Discriminação do serviço", payload.discriminacao());
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Emitir NFS-e")).click();
+    submit("Emitir NFS-e");
 
     Locator issued = page.locator("#nfse-number");
     Locator error = page.getByRole(AriaRole.ALERT);
     issued.or(error).first().waitFor();
     if (error.isVisible()) throw new BusinessFailureException("NFS-e refused by the Prefeitura: " + error.innerText());
     return readDetail();
+  }
+
+  /** Navigates and treats server errors as transient: the Prefeitura may be back in a minute. */
+  private void open(String path) {
+    checkStatus(page.navigate(baseUrl + path), path);
+  }
+
+  /** Clicks a submit button and checks the HTTP status of the page it leads to. */
+  private void submit(String buttonName) {
+    Locator button = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(buttonName));
+    Response response = page.waitForResponse(r -> r.request().isNavigationRequest() && "POST".equals(r.request().method()), button::click);
+    checkStatus(response, buttonName);
+  }
+
+  private static void checkStatus(Response response, String step) {
+    if (response != null && response.status() >= 500) {
+      throw new TransientFailureException("Prefeitura answered HTTP " + response.status() + " at " + step);
+    }
   }
 
   private void fill(String label, String value) {

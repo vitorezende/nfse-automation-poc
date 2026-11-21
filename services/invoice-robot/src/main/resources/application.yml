@@ -14,8 +14,14 @@ spring:
         acknowledge-mode: auto
         prefetch: 1
         concurrency: 1
-        # Until retries arrive (#9), a failed command is not requeued in a tight loop.
-        default-requeue-rejected: false
+        # Page failures are handled by RetryScheduler. Unexpected errors (e.g. no broker confirm) are retried
+        # in-process with backoff, then the command is parked in the DLQ (RabbitConfig#parkInDeadLetterQueue).
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 10s
 
 server:
   port: ${PORT:8080}
@@ -31,6 +37,8 @@ robot:
   credentials-file: ${CREDENTIALS_FILE:../../infra/robot/credentials.json}
   headless: ${HEADLESS:true}
   navigation-timeout: ${NAVIGATION_TIMEOUT:15s}
+  # Backoff before retry 1, 2 and 3 (matches robot.issue-nfse.retry-1..3 in infra/rabbitmq/definitions.json).
+  retry-delays: ${RETRY_DELAYS:10s,1m,5m}
 
 logging:
   pattern:

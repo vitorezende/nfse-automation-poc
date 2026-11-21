@@ -80,6 +80,8 @@ public abstract class RobotBoundaryTestSupport {
     registry.add("spring.rabbitmq.password", () -> "poc");
     registry.add("robot.city-hall-url", RobotBoundaryTestSupport::cityHallUrl);
     registry.add("robot.credentials-file", () -> REPO_ROOT.resolve("infra/robot/credentials.json").toString());
+    // Short backoff so retry scenarios finish quickly; the production default is 10s, 1m, 5m.
+    registry.add("robot.retry-delays", () -> "1s,1s,1s");
   }
 
   static String cityHallUrl() {
@@ -105,6 +107,17 @@ public abstract class RobotBoundaryTestSupport {
         .setMessageId(command.path("messageId").asText())
         .build();
     rabbit.send("", COMMAND_QUEUE, message);
+  }
+
+  /** Configures the Portal da Prefeitura's chaos page, as the demo presenter would. */
+  static void setChaos(String formFields) throws Exception {
+    HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(cityHallUrl() + "/admin/chaos"))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .POST(HttpRequest.BodyPublishers.ofString(formFields)).build(), HttpResponse.BodyHandlers.discarding());
+  }
+
+  static void resetChaos() throws Exception {
+    setChaos("latencyMinMs=0&latencyMaxMs=0&submitErrorPercent=0");
   }
 
   /** Looks the RPS up on the Portal da Prefeitura as the given Prestador, like a human would. */
