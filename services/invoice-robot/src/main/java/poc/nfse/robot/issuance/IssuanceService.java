@@ -1,6 +1,5 @@
 package poc.nfse.robot.issuance;
 
-import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import java.util.Map;
@@ -8,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import poc.nfse.robot.RobotProperties;
+import poc.nfse.robot.cityhall.BrowserPool;
 import poc.nfse.robot.cityhall.CityHallPortal;
 import poc.nfse.robot.credentials.CredentialStore;
 import poc.nfse.robot.credentials.CredentialStore.Credentials;
@@ -23,13 +23,13 @@ public class IssuanceService {
 
   private static final Logger log = LoggerFactory.getLogger(IssuanceService.class);
 
-  private final Browser browser;
+  private final BrowserPool browsers;
   private final CredentialStore credentials;
   private final EventPublisher events;
   private final RobotProperties properties;
 
-  public IssuanceService(Browser browser, CredentialStore credentials, EventPublisher events, RobotProperties properties) {
-    this.browser = browser;
+  public IssuanceService(BrowserPool browsers, CredentialStore credentials, EventPublisher events, RobotProperties properties) {
+    this.browsers = browsers;
     this.credentials = credentials;
     this.events = events;
     this.properties = properties;
@@ -69,7 +69,7 @@ public class IssuanceService {
   private IssuedNfse issueOnCityHall(IssueNfseCommand.Payload payload) {
     Credentials login = credentials.resolve(payload.prestador().credentialRef())
         .orElseThrow(() -> new BusinessFailureException("No credentials for " + payload.prestador().credentialRef()));
-    try (BrowserContext context = browser.newContext()) {
+    try (BrowserContext context = browsers.browser().newContext()) {
       context.setDefaultTimeout(properties.navigationTimeout().toMillis());
       Page page = context.newPage();
       CityHallPortal portal = new CityHallPortal(page, properties.cityHallUrl());
