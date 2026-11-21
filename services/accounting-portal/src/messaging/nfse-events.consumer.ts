@@ -1,4 +1,4 @@
-import { Nack, RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
+import { MessageHandlerErrorBehavior, Nack, RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, type IssuanceRequestStatus } from '../generated/prisma/client.js';
 import { IssuanceUpdates } from '../issuance-requests/issuance-updates.js';
@@ -41,7 +41,13 @@ export class NfseEventsConsumer {
     private readonly updates: IssuanceUpdates,
   ) {}
 
-  @RabbitSubscribe({ queue: 'accounting.nfse-events', createQueueIfNotExists: false })
+  @RabbitSubscribe({
+    queue: 'accounting.nfse-events',
+    createQueueIfNotExists: false,
+    // Infrastructure failures (e.g. database down) requeue the event; it is never dropped.
+    // Explicit rather than relying on the library default.
+    errorBehavior: MessageHandlerErrorBehavior.REQUEUE,
+  })
   async handle(message: unknown): Promise<void | Nack> {
     const violations = this.contracts.validate(message as { type?: unknown });
     if (violations.length > 0) {
