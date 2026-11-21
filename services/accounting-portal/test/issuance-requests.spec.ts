@@ -95,6 +95,13 @@ describe('Solicitação de Emissão', () => {
     expect(await harness.takeCommand(2_000)).toBeNull();
   });
 
+  it('concurrent dispatches of the same Solicitação publish a single command', async () => {
+    const location = await createIssuanceRequest({ tomadorName: 'Cliente Concurrent' });
+    await Promise.all(Array.from({ length: 5 }, () => http().post(`${location}/emitir`).expect(302)));
+    expect((await harness.takeCommand())?.payload.tomador.name).toBe('Cliente Concurrent');
+    expect(await harness.takeCommand(2_000)).toBeNull();
+  });
+
   it('allocates sequential RPS numbers per Prestador', async () => {
     const first = (await http().get(await createIssuanceRequest({ prestadorCnpj: '33.444.555/0001-66', servicoCode: '07.02' }))).text;
     const second = (await http().get(await createIssuanceRequest({ prestadorCnpj: '33.444.555/0001-66', servicoCode: '07.03' }))).text;

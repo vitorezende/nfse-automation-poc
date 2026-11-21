@@ -65,8 +65,12 @@ export class IssuanceRequestsService {
     await this.prisma.$transaction(async (tx) => {
       const request = await tx.issuanceRequest.findUnique({ where: { id }, include: { prestador: true } });
       if (!request) throw new InvalidIssuanceRequestError('Solicitação não encontrada.');
-      if (request.status !== 'DRAFT' || request.dispatchRequestedAt) return; // already dispatched: no-op
-      await tx.issuanceRequest.update({ where: { id }, data: { dispatchRequestedAt: new Date() } });
+      // The conditional update is the guard: of concurrent dispatches, exactly one matches the row.
+      const { count } = await tx.issuanceRequest.updateMany({
+        where: { id, status: 'DRAFT', dispatchRequestedAt: null },
+        data: { dispatchRequestedAt: new Date() },
+      });
+      if (count === 0) return; // already dispatched: no-op
       await tx.outboxMessage.create({
         data: {
           issuanceRequestId: id,
