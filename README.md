@@ -108,7 +108,7 @@ Run it from a fresh clone. Each step says what to look at.
 ### 1. Happy path: create → dispatch → Emitida
 
 1. `docker compose down -v && docker compose up -d --build --wait`
-2. Open http://localhost:3000 and click **Nova Solicitação**. Keep **ACME Tecnologia Ltda** and its first Serviço, fill in a Tomador (any CNPJ, e.g. `22.222.222/0001-22`), an amount (`1500,00`), the Competência and a Discriminação, then click **Salvar como Rascunho**.
+2. Open http://localhost:3000 and click **Nova Solicitação**. Keep **ACME Tecnologia Ltda** and its first Serviço, fill in a Tomador (any CNPJ, e.g. `22.222.222/0001-22`), an amount (`1500.00`), the Competência and a Discriminação, then click **Salvar como Rascunho**.
 3. Click **Emitir**. Without reloading, the status goes **Enviada → Em processamento → Emitida**: events are pushed to the page over SSE.
 4. The page shows the NFS-e number and verification code, with links to the **XML** and the **DANFSe (PDF)** served from object storage.
 5. Log in to http://localhost:3001 as `acme` / `acme-pass`. Under **Consultar NFS-e por RPS**, the same RPS shows the same NFS-e.

@@ -51,6 +51,8 @@ class IdempotencyTest extends RobotBoundaryTestSupport {
     List<JsonNode> events = EventCollector.collect(rabbit, eventsQueue, 4, Duration.ofSeconds(90));
     assertThat(types(events)).containsExactly(
         "NfseIssuanceStarted", "NfseIssuanceAttemptFailed", "NfseIssuanceStarted", "NfseIssued");
+    // The operator reads the actual cause, not Playwright's "Error {" wrapper.
+    assertThat(events.get(1).at("/payload/reason").asText()).startsWith("Timeout");
     assertThat(events.get(3).at("/payload/attempt").asInt()).isEqualTo(2);
     assertThat(cityHallNfseCountForRps("acme", "acme-pass", rps, "A")).isEqualTo(1);
   }
