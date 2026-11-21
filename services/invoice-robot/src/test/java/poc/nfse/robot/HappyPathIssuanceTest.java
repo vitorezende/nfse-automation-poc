@@ -61,6 +61,13 @@ class HappyPathIssuanceTest extends RobotBoundaryTestSupport {
 
     int rpsNumber = command.at("/payload/rps/number").asInt();
     assertThat(cityHallHasNfseForRps("acme", "acme-pass", rpsNumber, "A")).isTrue();
+
+    // Claim check (ADR 0004): the documents are in object storage and the event only references them.
+    JsonNode documents = events.get(1).at("/payload/documents");
+    String xml = new String(storedObject(documents.get("xml")), java.nio.charset.StandardCharsets.UTF_8);
+    assertThat(xml).startsWith("<?xml").contains("<nNFSe>" + nfse.get("number").asText() + "</nNFSe>").contains("SEM VALOR FISCAL");
+    byte[] pdf = storedObject(documents.get("pdf"));
+    assertThat(new String(pdf, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
   }
 
   @Test

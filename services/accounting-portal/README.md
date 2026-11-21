@@ -13,9 +13,10 @@ Where the Escritório Contábil creates Solicitações de Emissão and dispatche
    | --- | --- | --- |
    | `NfseIssuanceStarted` | Rascunho/Enviada → **Em processamento** | ✓ |
    | `NfseIssuanceAttemptFailed` | none | ✓ with reason |
-   | `NfseIssued` | anything but Emitida → **Emitida** (+ number, verification code) | ✓ |
+   | `NfseIssued` | anything but Emitida → **Emitida** (+ number, verification code, document refs) | ✓ |
    | `NfseIssuanceFailed` | Rascunho/Enviada/Em processamento → **Falhou** (+ reason) | ✓ |
 
+   An Emitida Solicitação links to its XML and DANFSe through presigned object storage URLs (15 min), signed for `S3_PUBLIC_ENDPOINT`.
 5. **Reprocessamento**: a **Falhou** Solicitação offers *Reprocessar*. The button writes a new `IssueNfse` (new `messageId`, **original RPS**) to the outbox and records "Reprocessamento solicitado" on the timeline. The relay then moves the Solicitação back to **Enviada**. Because the RPS is reused, the robot's lookup by RPS rules out a second NFS-e (ADR 0002). Concurrent clicks produce a single command, and Solicitações that haven't failed answer 409.
 
    Each event is applied once (an inbox keyed on `messageId`). An event that would move the status backwards is still recorded on the timeline. The detail page updates live through server-sent events (HTMX SSE), using single-instance in-process notifications.

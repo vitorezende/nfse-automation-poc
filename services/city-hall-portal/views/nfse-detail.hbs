@@ -14,4 +14,8 @@
   <tr><th>Alíquota do ISS</th><td>{{nfse.issRate}}</td></tr>
   <tr><th>Valor do ISS</th><td>{{nfse.issAmount}}</td></tr>
 </table>
-<p><a href="/nfse/emitir">Emitir outra NFS-e</a></p>
+<p>
+  <a href="/nfse/{{nfse.id}}/xml" data-download="xml">Baixar XML</a> |
+  <a href="/nfse/{{nfse.id}}/pdf" data-download="pdf">Baixar DANFSe (PDF)</a> |
+  <a href="/nfse/emitir">Emitir outra NFS-e</a>
+</p>

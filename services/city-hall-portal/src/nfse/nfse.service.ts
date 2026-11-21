@@ -88,6 +88,10 @@ export class NfseService {
     return this.prisma.nfse.findFirst({ where: { id, prestadorId } });
   }
 
+  findWithPrestador(prestadorId: number, id: number) {
+    return this.prisma.nfse.findFirst({ where: { id, prestadorId }, include: { prestador: true } });
+  }
+
   recent(prestadorId: number): Promise<Nfse[]> {
     return this.prisma.nfse.findMany({ where: { prestadorId }, orderBy: { id: 'desc' }, take: 20 });
   }

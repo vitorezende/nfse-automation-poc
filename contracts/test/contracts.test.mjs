@@ -71,3 +71,9 @@ test("AsyncAPI document is valid and declares exactly the five message types", a
     "NfseIssued",
   ]);
 });
+
+test("NfseIssued without document references is rejected", () => {
+  const message = example("nfse-issued");
+  delete message.payload.documents;
+  assert.notDeepEqual(validate(message).errors, []);
+});

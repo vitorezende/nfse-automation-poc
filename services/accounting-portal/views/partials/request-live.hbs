@@ -5,6 +5,9 @@
     <dt>NFS-e</dt><dd data-field="nfseNumber">{{request.nfseNumber}}</dd>
     <dt>Código de verificação</dt><dd data-field="nfseVerificationCode">{{request.nfseVerificationCode}}</dd>
     <dt>Emitida em</dt><dd>{{request.nfseIssuedAt}}</dd>
+    {{#if request.xmlUrl}}
+    <dt>Documentos</dt><dd><a data-download="xml" href="{{request.xmlUrl}}">XML da NFS-e</a> · <a data-download="pdf" href="{{request.pdfUrl}}">DANFSe (PDF)</a></dd>
+    {{/if}}
     {{/if}}
     {{#if request.failureReason}}
     <dt>Motivo da falha</dt><dd data-field="failureReason">{{request.failureReason}}</dd>

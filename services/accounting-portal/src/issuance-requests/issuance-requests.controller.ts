@@ -1,6 +1,7 @@
 import { Body, ConflictException, Controller, Get, type MessageEvent, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse } from '@nestjs/common';
 import hbs from 'hbs';
 import { concat, defer, filter, from, Observable, switchMap } from 'rxjs';
+import { DocumentLinks } from '../storage/document-links.js';
 import { IssuanceUpdates } from './issuance-updates.js';
 import type { Response } from 'express';
 import { EVENT_LABELS, STATUS_LABELS } from './status-labels.js';
@@ -58,7 +59,19 @@ export class IssuanceRequestsController {
   constructor(
     private readonly issuanceRequests: IssuanceRequestsService,
     private readonly updates: IssuanceUpdates,
+    private readonly documentLinks: DocumentLinks,
   ) {}
+
+  /** The view model plus presigned document links once the NFS-e exists. */
+  private async view(request: IssuanceRequestWithPrestador) {
+    const view = toView(request);
+    if (!request.documentsBucket || !request.nfseXmlKey || !request.nfsePdfKey) return view;
+    const [xmlUrl, pdfUrl] = await Promise.all([
+      this.documentLinks.link(request.documentsBucket, request.nfseXmlKey, `nfse-${request.nfseNumber}.xml`),
+      this.documentLinks.link(request.documentsBucket, request.nfsePdfKey, `danfse-${request.nfseNumber}.pdf`),
+    ]);
+    return { ...view, xmlUrl, pdfUrl };
+  }
 
   @Get()
   async list(@Res() res: Response): Promise<void> {
@@ -121,7 +134,7 @@ export class IssuanceRequestsController {
     const render = () =>
       defer(() => this.issuanceRequests.find(id)).pipe(
         filter((request) => request !== null),
-        switchMap((request) => from([{ type: 'update', data: renderLive({ request: toView(request!) }) }])),
+        switchMap((request) => from(this.view(request!).then((view) => ({ type: 'update', data: renderLive({ request: view }) })))),
       );
     return concat(render(), changes.pipe(filter((changed) => changed === id), switchMap(render)));
   }
@@ -130,7 +143,7 @@ export class IssuanceRequestsController {
   async detail(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response): Promise<void> {
     const request = await this.issuanceRequests.find(id);
     if (!request) throw new NotFoundException();
-    res.render('detail', { title: `Solicitação RPS ${request.rpsNumber}`, request: toView(request) });
+    res.render('detail', { title: `Solicitação RPS ${request.rpsNumber}`, request: await this.view(request) });
   }
 
   private async renderForm(res: Response, form: CreateIssuanceRequestForm, error?: string): Promise<void> {

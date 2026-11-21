@@ -42,6 +42,7 @@ export async function startHarness(): Promise<Harness> {
   process.env.DATABASE_URL = databaseUrl;
   process.env.RABBITMQ_URL = rabbitUrl;
   process.env.OUTBOX_POLL_INTERVAL_MS = '100';
+  process.env.S3_PUBLIC_ENDPOINT = 'http://localhost:8333';
   const { AppModule } = await import('../src/app.module.js');
   const { configureApp } = await import('../src/configure-app.js');
   const { PrismaService } = await import('../src/prisma.service.js');

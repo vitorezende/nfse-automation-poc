@@ -62,6 +62,13 @@ test('a Solicitação dispatched in the Portal da Contabilidade ends Emitida wit
   })).text();
   assert.ok(lookup.includes(`>${nfseNumber}<`), `NFS-e ${nfseNumber} not found at the Prefeitura for RPS ${rpsNumber}/${rpsSeries}`);
 
+  // Claim check: the XML and the watermarked DANFSe download from object storage via presigned links.
+  const link = (kind) => page.match(new RegExp(`data-download="${kind}" href="([^"]+)"`))?.[1].replace(/&#x3D;/g, '=').replace(/&amp;/g, '&');
+  const xml = await (await fetch(link('xml'))).text();
+  assert.ok(xml.includes(`<nNFSe>${nfseNumber}</nNFSe>`), 'XML does not carry the NFS-e number');
+  const pdf = Buffer.from(await (await fetch(link('pdf'))).arrayBuffer());
+  assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-');
+
   // One correlation ID can be followed through both services' logs.
   assert.ok(compose('logs accounting-portal').includes(correlationId), 'correlation ID missing from accounting-portal logs');
   assert.ok(compose('logs invoice-robot').includes(correlationId), 'correlation ID missing from invoice-robot logs');

@@ -10,7 +10,9 @@ publish NfseIssuanceStarted (confirmed)
 resolve credentialRef → login               (credential store; passwords never travel in messages)
 log in to the Portal da Prefeitura
 query by RPS → found? reuse it : issue it   (ADR 0002)
-publish NfseIssued (confirmed)
+download XML + DANFSe PDF (same session)
+upload both to object storage               (claim check, ADR 0004)
+publish NfseIssued with the object refs (confirmed)
 ack
 
 business failure (bad credentials, data refused) → NfseIssuanceFailed(business), ack, no retry
@@ -44,6 +46,7 @@ Every log line carries the instance hostname, the thread and the command's corre
 | `HEADLESS` | `true` | Set `false` locally to watch the browser |
 | `RETRY_DELAYS` | `10s,1m,5m` | Backoff per retry (at most 3, one per retry queue) |
 | `ROBOT_CONCURRENCY` | `3` | Concurrent issuances per instance |
+| `S3_ENDPOINT` / `S3_BUCKET` | `http://localhost:8333` / `nfse-documents` | Object storage for the documents |
 
 ## Tests
 
