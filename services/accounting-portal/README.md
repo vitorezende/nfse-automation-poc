@@ -1,38 +1,38 @@
 # Portal da Contabilidade
 
-Where the Escritório Contábil creates Solicitações de Emissão and dispatches them to the Robô de Emissão. There is no login (POC).
+Onde o Escritório Contábil cria Solicitações de Emissão e as envia ao Robô de Emissão. Não há login (POC).
 
-## Flow
+## Fluxo
 
-1. **Nova Solicitação**: pick a Prestador and a Serviço from its Catálogo de Serviços, then enter the Tomador, amount, Competência and Discriminação. The Solicitação is saved as **Rascunho** with the Prestador's next RPS number.
-2. **Emitir**: in one database transaction, records the intent and writes an `IssueNfse` command to the outbox. While unpublished, the status shows "Rascunho (envio pendente)".
-3. **Outbox relay**: polls pending rows, publishes them to the `robot.issue-nfse` queue with publisher confirms, then marks the Solicitação **Enviada**. If the broker is down, rows stay pending and are retried.
-4. **Status tracking**: consumes the robot's events from `accounting.nfse-events` (bound to `nfse.events`), validated against `contracts/schemas`:
+1. **Nova Solicitação**: escolha um Prestador e um Serviço do seu Catálogo de Serviços e informe o Tomador, o valor, a Competência e a Discriminação. A Solicitação é salva como **Rascunho** com o próximo número de RPS do Prestador. A Competência deve estar no formato `AAAA-MM`; `MM/AAAA` também é aceito e convertido.
+2. **Emitir**: em uma única transação no banco, registra a intenção e grava um comando `IssueNfse` no outbox. Enquanto não é publicado, o status mostra "Rascunho (envio pendente)".
+3. **Relay do outbox**: consulta as linhas pendentes, publica-as na fila `robot.issue-nfse` com publisher confirms e marca a Solicitação como **Enviada**. Se o broker estiver fora do ar, as linhas continuam pendentes e são tentadas de novo.
+4. **Acompanhamento de status**: consome os eventos do robô em `accounting.nfse-events` (ligada a `nfse.events`), validados contra `contracts/schemas`:
 
-   | Event | Status change (forward only) | Timeline |
+   | Evento | Mudança de status (só avança) | Linha do tempo |
    | --- | --- | --- |
    | `NfseIssuanceStarted` | Rascunho/Enviada → **Em processamento** | ✓ |
-   | `NfseIssuanceAttemptFailed` | none | ✓ with reason |
-   | `NfseIssued` | anything but Emitida → **Emitida** (+ number, verification code, document refs) | ✓ |
-   | `NfseIssuanceFailed` | Rascunho/Enviada/Em processamento → **Falhou** (+ reason) | ✓ |
+   | `NfseIssuanceAttemptFailed` | nenhuma | ✓ com o motivo |
+   | `NfseIssued` | qualquer um exceto Emitida → **Emitida** (+ número, código de verificação, referências dos documentos) | ✓ |
+   | `NfseIssuanceFailed` | Rascunho/Enviada/Em processamento → **Falhou** (+ motivo) | ✓ |
 
-   An Emitida Solicitação links to its XML and DANFSe through presigned object storage URLs (15 min), signed for `S3_PUBLIC_ENDPOINT`. Each failed attempt on the timeline links to the screenshot and Playwright trace the robot captured, the same way.
-5. **Reprocessamento**: a **Falhou** Solicitação offers *Reprocessar*. The button writes a new `IssueNfse` (new `messageId`, **original RPS**) to the outbox and records "Reprocessamento solicitado" on the timeline. The relay then moves the Solicitação back to **Enviada**. Because the RPS is reused, the robot's lookup by RPS rules out a second NFS-e (ADR 0002). Concurrent clicks produce a single command, and Solicitações that haven't failed answer 409.
+   Uma Solicitação Emitida tem links para o XML e o DANFSe por URLs pré-assinadas do armazenamento de objetos (15 min), assinadas para `S3_PUBLIC_ENDPOINT`. Da mesma forma, cada tentativa com falha na linha do tempo tem links para a captura de tela e o trace do Playwright registrados pelo robô.
+5. **Reprocessamento**: uma Solicitação com status **Falhou** oferece *Reprocessar*. O botão grava um novo `IssueNfse` (novo `messageId`, **RPS original**) no outbox e registra "Reprocessamento solicitado" na linha do tempo. Em seguida, o relay devolve a Solicitação para **Enviada**. Como o RPS é reutilizado, a consulta por RPS do robô impede uma segunda NFS-e (ADR 0002). Cliques simultâneos geram um único comando, e Solicitações que não falharam respondem 409.
 
-   Each event is applied once (an inbox keyed on `messageId`). An event that would move the status backwards is still recorded on the timeline. The detail page updates live through server-sent events (HTMX SSE), using single-instance in-process notifications.
+   Cada evento é aplicado uma única vez (um inbox indexado por `messageId`). Um evento que faria o status retroceder ainda é registrado na linha do tempo. A página de detalhe se atualiza ao vivo por server-sent events (HTMX SSE), com notificações em processo para uma única instância.
 
-## Seeded Prestadores
+## Prestadores pré-cadastrados
 
-| Prestador | CNPJ | Credential ref | Serviços |
+| Prestador | CNPJ | Referência de credencial | Serviços |
 | --- | --- | --- | --- |
 | ACME Tecnologia Ltda | 11.111.111/0001-11 | `prestador-acme` | 01.07, 01.05 |
 | Beta Consultoria ME | 22.333.444/0001-55 | `prestador-beta` | 17.01, 17.19 |
 | Gama Engenharia S.A. | 33.444.555/0001-66 | `prestador-gama` | 07.02, 07.03 |
 
-## Tests
+## Testes
 
-`npm test` runs the boundary tests (Docker required): create, dispatch, contract validity of `IssueNfse`, broker outage, double/concurrent dispatch, RPS allocation, catalogue validation, every status transition, failure artifact links, duplicate and out-of-order events, invalid events, and the live SSE update.
+`npm test` executa os testes de fronteira (requer Docker): criação, envio, validade do `IssueNfse` perante o contrato, indisponibilidade do broker, envio duplo e concorrente, alocação de RPS, validação do catálogo e da Competência, todas as transições de status, links dos artefatos de falha, eventos duplicados e fora de ordem, eventos inválidos e a atualização ao vivo por SSE.
 
-## Running
+## Execução
 
-`docker compose up accounting-portal` from the repository root, then open http://localhost:3000.
+`docker compose up accounting-portal` a partir da raiz do repositório; depois abra http://localhost:3000.

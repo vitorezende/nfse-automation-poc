@@ -1,75 +1,75 @@
-# NFS-e Automation POC
+# POC de Automação de NFS-e
 
-Simulates an accounting firm requesting service invoices (NFS-e) on behalf of its clients, issued by a robot on a fake city hall portal. All data is fictitious; no real invoice is ever issued.
+Simula um escritório de contabilidade que solicita notas fiscais de serviço (NFS-e) em nome dos seus clientes, emitidas por um robô em um portal de prefeitura fictício. Todos os dados são fictícios; nenhuma nota real é emitida.
 
-Domain terms with no good English equivalent (Prestador, Tomador, NFS-e, RPS) are kept untranslated in code; generic terms are in English.
+No código, os termos de domínio sem bom equivalente em inglês (Prestador, Tomador, NFS-e, RPS) ficam sem tradução; os termos genéricos ficam em inglês.
 
-## Parties
+## Partes
 
 **Escritório Contábil**:
-The accounting firm that operates the Portal da Contabilidade and requests invoices on behalf of its clients.
-_Avoid_: Contabilidade (as a party), accountant
+O escritório de contabilidade que opera o Portal da Contabilidade e solicita notas em nome dos seus clientes.
+_Evitar_: Contabilidade (como parte), contador
 
 **Prestador**:
-The company that provided the service and is legally the issuer of the NFS-e; a client of the Escritório Contábil.
-_Avoid_: Emitente, empresa, cliente
+A empresa que prestou o serviço e é, legalmente, a emitente da NFS-e; cliente do Escritório Contábil.
+_Evitar_: Emitente, empresa, cliente
 
 **Tomador**:
-The customer who received the service from the Prestador, identified by CNPJ.
-_Avoid_: Cliente, customer, destinatário
+Quem recebeu o serviço do Prestador, identificado pelo CNPJ.
+_Evitar_: Cliente, customer, destinatário
 
 **Prefeitura**:
-The city hall whose web portal is the only channel for issuing an NFS-e.
-_Avoid_: Município (as a system), governo
+O município cujo portal web é o único canal para emitir uma NFS-e.
+_Evitar_: Município (como sistema), governo
 
-## Systems
+## Sistemas
 
 **Portal da Contabilidade**:
-The Escritório Contábil's system where Solicitações de Emissão are created and their resulting documents are stored.
-_Avoid_: Accounting app, backoffice
+O sistema do Escritório Contábil onde as Solicitações de Emissão são criadas e os documentos resultantes ficam guardados.
+_Evitar_: Accounting app, backoffice
 
 **Portal da Prefeitura**:
-The Prefeitura's web-only portal, simulating a third-party legacy system with no API.
-_Avoid_: Prefeitura API, municipal system
+O portal só web da Prefeitura, que simula um sistema legado de terceiros sem API.
+_Evitar_: API da Prefeitura, sistema municipal
 
 **Robô de Emissão**:
-The automation that operates the Portal da Prefeitura through a browser on behalf of a Prestador.
-_Avoid_: Bot, scraper, Playwright service
+A automação que opera o Portal da Prefeitura por um navegador em nome de um Prestador.
+_Evitar_: Bot, scraper, serviço Playwright
 
-## Invoicing
+## Faturamento
 
-**Solicitação de Emissão** (code: `IssuanceRequest`):
-A request, created in the Portal da Contabilidade, to issue one NFS-e for a given Prestador, Tomador, service and amount.
-_Avoid_: Pedido, job, task, order
+**Solicitação de Emissão** (no código: `IssuanceRequest`):
+Um pedido, criado no Portal da Contabilidade, para emitir uma NFS-e para um Prestador, Tomador, serviço e valor.
+_Evitar_: Pedido, job, task, order
 
 **RPS** (Recibo Provisório de Serviços):
-The Prestador's own sequential receipt number for a Solicitação de Emissão; the Prefeitura accepts each RPS at most once, which makes it the identity that prevents duplicate NFS-e.
-_Avoid_: Request ID, idempotency key (as a domain term)
+O número sequencial de recibo do próprio Prestador para uma Solicitação de Emissão; a Prefeitura aceita cada RPS no máximo uma vez, o que faz dele a identidade que impede NFS-e duplicadas.
+_Evitar_: Request ID, chave de idempotência (como termo de domínio)
 
 **NFS-e**:
-A service invoice issued by the Prefeitura, identified by its number and verification code.
-_Avoid_: NF-e, NFe, nota (NF-e is the state-level goods invoice, a different document)
+Nota fiscal de serviço emitida pela Prefeitura, identificada pelo número e pelo código de verificação.
+_Evitar_: NF-e, NFe, nota (NF-e é a nota estadual de mercadorias, outro documento)
 
 **Serviço**:
-An entry in a Prestador's Catálogo de Serviços: service code, description and ISS rate.
-_Avoid_: Produto, item
+Um item do Catálogo de Serviços de um Prestador: código do serviço, descrição e alíquota de ISS.
+_Evitar_: Produto, item
 
 **Catálogo de Serviços**:
-The set of Serviços a Prestador is registered to provide, pre-configured in the Portal da Contabilidade.
-_Avoid_: Service list, parametrização
+O conjunto de Serviços que um Prestador está habilitado a prestar, pré-configurado no Portal da Contabilidade.
+_Evitar_: Lista de serviços, parametrização
 
 **Competência**:
-The month/year in which the service was provided, which determines the tax period of the NFS-e.
-_Avoid_: Data de emissão, período
+O mês/ano em que o serviço foi prestado, que determina o período de apuração da NFS-e.
+_Evitar_: Data de emissão, período
 
 **Discriminação**:
-The free-text description of the service rendered, printed on the NFS-e.
-_Avoid_: Observação, descrição (alone)
+A descrição em texto livre do serviço prestado, impressa na NFS-e.
+_Evitar_: Observação, descrição (sozinha)
 
 **DANFSe**:
-The printable PDF representation of an NFS-e; in this POC always watermarked as a simulation with no fiscal value.
-_Avoid_: Nota em PDF, boleto
+A representação em PDF, para impressão, de uma NFS-e; nesta POC sempre com a marca d'água de simulação sem valor fiscal.
+_Evitar_: Nota em PDF, boleto
 
 **Reprocessamento**:
-Re-dispatching a failed Solicitação de Emissão with its original RPS, so it can never produce a second NFS-e.
-_Avoid_: Retry (reserved for automatic retries), reenvio
+Reenviar uma Solicitação de Emissão que falhou com o seu RPS original, de modo que ela nunca gere uma segunda NFS-e.
+_Evitar_: Retry (reservado às retentativas automáticas), reenvio
