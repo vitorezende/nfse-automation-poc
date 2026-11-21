@@ -22,7 +22,8 @@
         "issuanceRequestId",
         "rps",
         "attempt",
-        "nfse"
+        "nfse",
+        "documents"
       ],
       "additionalProperties": false,
       "properties": {
@@ -65,7 +66,7 @@
             "pdf"
           ],
           "additionalProperties": false,
-          "description": "Optional until document download is implemented (#8).",
+          "description": "XML and DANFSe PDF stored in object storage (claim check, ADR 0004).",
           "properties": {
             "xml": {
               "$ref": "common.schema.json#/$defs/objectRef"

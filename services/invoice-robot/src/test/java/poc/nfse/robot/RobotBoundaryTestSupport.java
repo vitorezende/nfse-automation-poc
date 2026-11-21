@@ -30,6 +30,10 @@ import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /**
  * Seam 1: the Robô de Emissão's boundary. Commands go in on the real queue; events, stored objects and
@@ -66,10 +70,42 @@ public abstract class RobotBoundaryTestSupport {
           MountableFile.forHostPath(REPO_ROOT.resolve("infra/rabbitmq/10-definitions.conf")),
           "/etc/rabbitmq/conf.d/10-definitions.conf");
 
+  static final String BUCKET = "nfse-documents";
+
+  static final GenericContainer<?> OBJECT_STORAGE = new GenericContainer<>("chrislusf/seaweedfs:3.97")
+      .withCommand("server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json")
+      .withCopyFileToContainer(
+          MountableFile.forHostPath(REPO_ROOT.resolve("infra/object-storage/s3.json")), "/etc/seaweedfs/s3.json")
+      .withExposedPorts(8333)
+      .waitingFor(Wait.forHttp("/healthz").forPort(8333).withStartupTimeout(Duration.ofMinutes(2)));
+
   static {
     POSTGRES.start();
     CITY_HALL.start();
     RABBIT.start();
+    OBJECT_STORAGE.start();
+    try (S3Client s3 = s3()) {
+      s3.createBucket(b -> b.bucket(BUCKET));
+    }
+  }
+
+  static String objectStorageUrl() {
+    return "http://" + OBJECT_STORAGE.getHost() + ":" + OBJECT_STORAGE.getMappedPort(8333);
+  }
+
+  static S3Client s3() {
+    return S3Client.builder()
+        .endpointOverride(URI.create(objectStorageUrl()))
+        .region(Region.US_EAST_1)
+        .forcePathStyle(true)
+        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("poc-access-key", "poc-secret-key")))
+        .build();
+  }
+
+  static byte[] storedObject(JsonNode ref) {
+    try (S3Client s3 = s3()) {
+      return s3.getObjectAsBytes(b -> b.bucket(ref.get("bucket").asText()).key(ref.get("key").asText())).asByteArray();
+    }
   }
 
   @DynamicPropertySource
@@ -82,6 +118,10 @@ public abstract class RobotBoundaryTestSupport {
     registry.add("robot.credentials-file", () -> REPO_ROOT.resolve("infra/robot/credentials.json").toString());
     // Short backoff so retry scenarios finish quickly; the production default is 10s, 1m, 5m.
     registry.add("robot.retry-delays", () -> "1s,1s,1s");
+    registry.add("robot.storage.endpoint", RobotBoundaryTestSupport::objectStorageUrl);
+    registry.add("robot.storage.bucket", () -> BUCKET);
+    registry.add("robot.storage.access-key", () -> "poc-access-key");
+    registry.add("robot.storage.secret-key", () -> "poc-secret-key");
   }
 
   static String cityHallUrl() {

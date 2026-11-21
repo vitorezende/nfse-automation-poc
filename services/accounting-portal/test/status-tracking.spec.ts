@@ -66,6 +66,22 @@ describe('Solicitação status tracking', () => {
     }, { timeout: 10_000 });
   });
 
+  it('offers the XML and DANFSe downloads through presigned object storage links', async () => {
+    const { location, command } = await dispatchedRequest();
+    await publish(command, 'NfseIssued', {
+      nfse: { number: '2026000999', verificationCode: 'DOCS-1234', issuedAt: '2026-11-21T10:00:00Z' },
+    });
+    await vi.waitFor(async () => expect(field(await page(location), 'status')).toBe('Emitida'), { timeout: 10_000 });
+    const html = await page(location);
+    const id = command.payload.issuanceRequestId;
+    const decode = (value?: string) => value?.replace(/&#x3D;/g, '=').replace(/&amp;/g, '&');
+    const xmlLink = decode(html.match(/data-download="xml" href="([^"]+)"/)?.[1]);
+    const pdfLink = decode(html.match(/data-download="pdf" href="([^"]+)"/)?.[1]);
+    expect(xmlLink).toContain(`http://localhost:8333/nfse-documents/${id}/nfse.xml?`);
+    expect(xmlLink).toContain('X-Amz-Signature=');
+    expect(pdfLink).toContain(`/nfse-documents/${id}/danfse.pdf?`);
+  });
+
   it('becomes Falhou with the reason', async () => {
     const { location, command } = await dispatchedRequest();
     await publish(command, 'NfseIssuanceFailed', { errorCategory: 'business', reason: 'Credenciais inválidas' });

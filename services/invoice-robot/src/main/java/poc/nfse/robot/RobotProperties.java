@@ -11,7 +11,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param headless        run the browser without a window
  * @param navigationTimeout how long a single page interaction may take
  * @param retryDelays       backoff before each retry of a transient failure; its size is the number of retries
+ * @param storage           S3-compatible object storage for the NFS-e documents (claim check, ADR 0004)
  */
 @ConfigurationProperties(prefix = "robot")
 public record RobotProperties(
-    String cityHallUrl, Path credentialsFile, boolean headless, Duration navigationTimeout, List<Duration> retryDelays) {}
+    String cityHallUrl,
+    Path credentialsFile,
+    boolean headless,
+    Duration navigationTimeout,
+    List<Duration> retryDelays,
+    Storage storage) {
+
+  public record Storage(String endpoint, String region, String bucket, String accessKey, String secretKey) {}
+}

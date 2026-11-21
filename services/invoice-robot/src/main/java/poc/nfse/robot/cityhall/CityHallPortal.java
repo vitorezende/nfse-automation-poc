@@ -1,5 +1,6 @@
 package poc.nfse.robot.cityhall;
 
+import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
@@ -15,6 +16,7 @@ import poc.nfse.robot.credentials.CredentialStore.Credentials;
 import poc.nfse.robot.issuance.BusinessFailureException;
 import poc.nfse.robot.issuance.IssueNfseCommand;
 import poc.nfse.robot.issuance.IssuedNfse;
+import poc.nfse.robot.issuance.NfseDocuments;
 import poc.nfse.robot.issuance.TransientFailureException;
 
 /**
@@ -77,6 +79,22 @@ public class CityHallPortal {
     issued.or(error).first().waitFor();
     if (error.isVisible()) throw new BusinessFailureException("NFS-e refused by the Prefeitura: " + error.innerText());
     return readDetail();
+  }
+
+  /**
+   * Downloads the XML and the DANFSe PDF linked from the NFS-e detail page (where findByRps and issue leave
+   * the page), through the same logged-in session.
+   */
+  public NfseDocuments downloadDocuments() {
+    return new NfseDocuments(download("xml"), download("pdf"));
+  }
+
+  private byte[] download(String kind) {
+    String href = page.locator("[data-download=\"" + kind + "\"]").getAttribute("href");
+    APIResponse response = page.context().request().get(baseUrl + href);
+    if (response.status() >= 500) throw new TransientFailureException("Prefeitura answered HTTP " + response.status() + " downloading " + kind);
+    if (!response.ok()) throw new IllegalStateException("Could not download " + kind + ": HTTP " + response.status());
+    return response.body();
   }
 
   /** Navigates and treats server errors as transient: the Prefeitura may be back in a minute. */

@@ -12,6 +12,7 @@ import poc.nfse.robot.cityhall.CityHallPortal;
 import poc.nfse.robot.credentials.CredentialStore;
 import poc.nfse.robot.credentials.CredentialStore.Credentials;
 import poc.nfse.robot.messaging.EventPublisher;
+import poc.nfse.robot.storage.DocumentStore;
 
 /**
  * Runs one attempt at issuing the NFS-e for an IssueNfse command. Publishes NfseIssuanceStarted and, when the
@@ -27,13 +28,18 @@ public class IssuanceService {
   private final CredentialStore credentials;
   private final EventPublisher events;
   private final RobotProperties properties;
+  private final DocumentStore documents;
 
-  public IssuanceService(BrowserPool browsers, CredentialStore credentials, EventPublisher events, RobotProperties properties) {
+  public IssuanceService(BrowserPool browsers, CredentialStore credentials, EventPublisher events,
+      RobotProperties properties, DocumentStore documents) {
     this.browsers = browsers;
     this.credentials = credentials;
     this.events = events;
     this.properties = properties;
+    this.documents = documents;
   }
+
+  private record Result(IssuedNfse nfse, NfseDocuments documents) {}
 
   public IssuanceOutcome attempt(IssueNfseCommand command, int attempt) {
     IssueNfseCommand.Payload payload = command.payload();
@@ -41,8 +47,15 @@ public class IssuanceService {
         "issuanceRequestId", payload.issuanceRequestId(), "rps", payload.rps(), "attempt", attempt));
 
     IssuedNfse nfse;
+    Map<String, Object> documentRefs;
     try {
-      nfse = issueOnCityHall(payload);
+      Result result = issueOnCityHall(payload);
+      nfse = result.nfse();
+      // Claim check: documents are stored before NfseIssued is published (ADR 0004).
+      String prefix = payload.issuanceRequestId() + "/";
+      documentRefs = Map.of(
+          "xml", documents.put(prefix + "nfse-" + nfse.number() + ".xml", result.documents().xml(), "application/xml"),
+          "pdf", documents.put(prefix + "danfse-" + nfse.number() + ".pdf", result.documents().pdf(), "application/pdf"));
     } catch (BusinessFailureException e) {
       log.warn("Issuance failed for good (business): {}", e.getMessage());
       events.publishFailure("NfseIssuanceFailed", command, attempt, "business", e.getMessage());
@@ -62,11 +75,12 @@ public class IssuanceService {
         "nfse", Map.of(
             "number", nfse.number(),
             "verificationCode", nfse.verificationCode(),
-            "issuedAt", nfse.issuedAt().toString())));
+            "issuedAt", nfse.issuedAt().toString()),
+        "documents", documentRefs));
     return new IssuanceOutcome.Issued(nfse);
   }
 
-  private IssuedNfse issueOnCityHall(IssueNfseCommand.Payload payload) {
+  private Result issueOnCityHall(IssueNfseCommand.Payload payload) {
     Credentials login = credentials.resolve(payload.prestador().credentialRef())
         .orElseThrow(() -> new BusinessFailureException("No credentials for " + payload.prestador().credentialRef()));
     try (BrowserContext context = browsers.browser().newContext()) {
@@ -74,13 +88,14 @@ public class IssuanceService {
       Page page = context.newPage();
       CityHallPortal portal = new CityHallPortal(page, properties.cityHallUrl());
       portal.login(login);
-      return portal.findByRps(payload.rps())
+      IssuedNfse nfse = portal.findByRps(payload.rps())
           .map(existing -> {
             log.info("NFS-e {} already exists for RPS {}/{}; not issuing again",
                 existing.number(), payload.rps().number(), payload.rps().series());
             return existing;
           })
           .orElseGet(() -> portal.issue(payload));
+      return new Result(nfse, portal.downloadDocuments());
     }
   }
 

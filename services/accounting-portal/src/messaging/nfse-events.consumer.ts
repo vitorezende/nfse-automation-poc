@@ -16,6 +16,7 @@ interface NfseEvent {
     reason?: string;
     errorCategory?: string;
     nfse?: { number: string; verificationCode: string; issuedAt: string };
+    documents?: { xml: { bucket: string; key: string }; pdf: { bucket: string; key: string } };
   };
 }
 
@@ -100,6 +101,9 @@ export class NfseEventsConsumer {
                 nfseNumber: event.payload.nfse!.number,
                 nfseVerificationCode: event.payload.nfse!.verificationCode,
                 nfseIssuedAt: new Date(event.payload.nfse!.issuedAt),
+                documentsBucket: event.payload.documents!.xml.bucket,
+                nfseXmlKey: event.payload.documents!.xml.key,
+                nfsePdfKey: event.payload.documents!.pdf.key,
                 failureReason: null,
               }),
               ...(event.type === 'NfseIssuanceFailed' && { failureReason: event.payload.reason }),

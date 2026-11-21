@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import type { Nfse } from '../generated/prisma/client.js';
 import { AuthenticatedGuard } from '../auth/authenticated.guard.js';
 import { formatBrl, formatPercent } from './decimal-input.js';
+import { danfsePdf, nfseXml } from './nfse-documents.js';
 import { type IssueNfseForm, NfseRejectedError, NfseService } from './nfse.service.js';
 
 function toView(nfse: Nfse) {
@@ -74,6 +75,20 @@ export class NfseController {
       searched,
       nfse: found ? toView(found) : null,
     });
+  }
+
+  @Get('nfse/:id/xml')
+  async xml(@Param('id', ParseIntPipe) id: number, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const found = await this.nfse.findWithPrestador(req.session.prestadorId!, id);
+    if (!found) throw new NotFoundException();
+    res.type('application/xml').attachment(`nfse-${found.number}.xml`).send(nfseXml(found, found.prestador));
+  }
+
+  @Get('nfse/:id/pdf')
+  async pdf(@Param('id', ParseIntPipe) id: number, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const found = await this.nfse.findWithPrestador(req.session.prestadorId!, id);
+    if (!found) throw new NotFoundException();
+    res.type('application/pdf').attachment(`danfse-${found.number}.pdf`).send(await danfsePdf(found, found.prestador));
   }
 
   @Get('nfse/:id')

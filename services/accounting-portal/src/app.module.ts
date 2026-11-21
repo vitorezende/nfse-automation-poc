@@ -7,6 +7,7 @@ import { ContractValidator } from './messaging/contract-validator.js';
 import { NfseEventsConsumer } from './messaging/nfse-events.consumer.js';
 import { OutboxRelay } from './outbox/outbox-relay.js';
 import { PrismaService } from './prisma.service.js';
+import { DocumentLinks } from './storage/document-links.js';
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import { PrismaService } from './prisma.service.js';
     }),
   ],
   controllers: [IssuanceRequestsController],
-  providers: [PrismaService, IssuanceRequestsService, OutboxRelay, ContractValidator, IssuanceUpdates, NfseEventsConsumer],
+  providers: [PrismaService, IssuanceRequestsService, OutboxRelay, ContractValidator, IssuanceUpdates, NfseEventsConsumer, DocumentLinks],
 })
 export class AppModule {}

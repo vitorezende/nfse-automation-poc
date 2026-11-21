@@ -63,6 +63,10 @@ model IssuanceRequest {
   nfseNumber          String?
   nfseVerificationCode String?
   nfseIssuedAt        DateTime?
+  /// Claim-check references (ADR 0004): the documents live in object storage, not in this database.
+  documentsBucket     String?
+  nfseXmlKey          String?
+  nfsePdfKey          String?
   failureReason       String?
   /// Set when the operator asks to reprocess a failed Solicitação; cleared once the new command is published.
   reprocessRequestedAt DateTime?
