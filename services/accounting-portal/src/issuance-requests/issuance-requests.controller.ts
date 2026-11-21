@@ -93,7 +93,7 @@ export class IssuanceRequestsController {
 
   @Get('solicitacoes/nova')
   async newPage(@Res() res: Response): Promise<void> {
-    await this.renderForm(res, {});
+    await this.renderForm(res, demoForm());
   }
 
   /** HTMX partial: the Serviços of the selected Prestador. */
@@ -173,4 +173,23 @@ export class IssuanceRequestsController {
 
 function servicoView(servico: { code: string; description: string; issRate: { mul(n: number): { toFixed(d: number): string } } }) {
   return { code: servico.code, label: `${servico.code} - ${servico.description} (ISS ${servico.issRate.mul(100).toFixed(2)}%)` };
+}
+
+/**
+ * What Nova Solicitação opens with: a complete, valid Solicitação, so a demo is one click away. The Prestador
+ * and Serviço are left out so the form falls back to the first of each.
+ */
+function demoForm(): CreateIssuanceRequestForm {
+  return {
+    tomadorCnpj: '22.222.222/0001-22',
+    tomadorName: 'Tomador Exemplo Ltda',
+    amount: '1500.00',
+    competencia: currentCompetencia(),
+    discriminacao: 'Suporte técnico mensal',
+  };
+}
+
+/** The current month as AAAA-MM, in Brazil's time zone. */
+function currentCompetencia(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date());
 }
