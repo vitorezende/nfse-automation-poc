@@ -18,6 +18,7 @@ export class ChaosController {
         ...settings,
         submitErrorPercent: Math.round(settings.submitErrorProbability * 100),
         sessionExpiryPercent: Math.round(settings.sessionExpiryProbability * 100),
+        phantomTimeoutPercent: Math.round(settings.phantomTimeoutProbability * 100),
       },
     });
   }
@@ -30,6 +31,7 @@ export class ChaosController {
       latencyMaxMs: clamp(Number(body.latencyMaxMs), latencyMinMs, 30_000),
       submitErrorProbability: clamp(Number(body.submitErrorPercent) / 100, 0, 1),
       sessionExpiryProbability: clamp(Number(body.sessionExpiryPercent) / 100, 0, 1),
+      phantomTimeoutProbability: clamp(Number(body.phantomTimeoutPercent) / 100, 0, 1),
       maintenance: body.maintenance === 'on',
       captcha: body.captcha === 'on',
     };

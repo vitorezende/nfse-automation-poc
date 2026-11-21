@@ -11,6 +11,11 @@ export interface ChaosSettings {
    * login. Never twice in a row for the same Prestador, so logging in again always lets the work continue.
    */
   sessionExpiryProbability: number;
+  /**
+   * Probability (0..1) of a "phantom timeout" on issuance: the NFS-e IS issued and stored, but the response
+   * never arrives. Only an RPS lookup before retrying avoids a duplicate (ADR 0002).
+   */
+  phantomTimeoutProbability: number;
   /** Every page answers HTTP 200 with a "scheduled maintenance" notice. */
   maintenance: boolean;
   /** The login form asks a simple arithmetic captcha. */
@@ -22,6 +27,7 @@ export const NO_CHAOS: ChaosSettings = {
   latencyMaxMs: 0,
   submitErrorProbability: 0,
   sessionExpiryProbability: 0,
+  phantomTimeoutProbability: 0,
   maintenance: false,
   captcha: false,
 };

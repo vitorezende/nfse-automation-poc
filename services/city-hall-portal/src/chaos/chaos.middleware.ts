@@ -30,7 +30,22 @@ export class ChaosMiddleware implements NestMiddleware {
         res.redirect('/login?expirada=1');
         return;
       }
+      if (this.chaos.roll(settings.phantomTimeoutProbability)) {
+        swallowResponse(req, res);
+      }
     }
     next();
   }
+}
+
+/**
+ * Lets the request be fully processed (the NFS-e gets issued) but never sends the response, then drops the
+ * connection after a minute, like a gateway that lost the reply.
+ */
+function swallowResponse(req: Request, res: Response): void {
+  const noop = (() => res) as never;
+  res.writeHead = noop;
+  res.write = (() => true) as never;
+  res.end = noop;
+  setTimeout(() => req.socket.destroy(), 60_000).unref();
 }

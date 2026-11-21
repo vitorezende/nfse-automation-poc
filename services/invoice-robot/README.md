@@ -18,6 +18,8 @@ ack
 captcha on the login page                        → solved (plain arithmetic, by design machine-solvable)
 session expired mid-flow (sent back to /login)   → log in again and continue, up to 2× per attempt
 maintenance page (HTTP 200, detected by content) → transient
+phantom timeout (issued, response lost)          → transient; the retry finds the NFS-e by RPS and reports it
+redelivered command (crash before ack)           → found by RPS, NfseIssued again with the same number
 business failure (bad credentials, data refused) → NfseIssuanceFailed(business), ack, no retry
 transient failure (HTTP 5xx, timeout, browser)   → NfseIssuanceAttemptFailed(transient)
     attempt ≤ 3 → republish to robot.issue-nfse.retry-N with expiration 10s | 1m | 5m and x-attempt+1
