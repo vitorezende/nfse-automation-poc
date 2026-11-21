@@ -62,15 +62,26 @@ export class IssuanceRequestsController {
     private readonly documentLinks: DocumentLinks,
   ) {}
 
-  /** The view model plus presigned document links once the NFS-e exists. */
+  /** The view model plus presigned links: NFS-e documents once issued, failure artifacts per timeline entry. */
   private async view(request: IssuanceRequestWithPrestador) {
     const view = toView(request);
-    if (!request.documentsBucket || !request.nfseXmlKey || !request.nfsePdfKey) return view;
+    const link = (bucket: string | null, key: string | null, filename: string) =>
+      bucket && key ? this.documentLinks.link(bucket, key, filename) : Promise.resolve(null);
+    const timeline = await Promise.all(
+      (request.timeline ?? []).map(async (entry, index) => {
+        const [screenshotUrl, traceUrl] = await Promise.all([
+          link(entry.artifactsBucket, entry.screenshotKey, `screenshot-attempt-${entry.attempt}.png`),
+          link(entry.artifactsBucket, entry.traceKey, `trace-attempt-${entry.attempt}.zip`),
+        ]);
+        return { ...view.timeline[index], screenshotUrl, traceUrl };
+      }),
+    );
+    if (!request.documentsBucket || !request.nfseXmlKey || !request.nfsePdfKey) return { ...view, timeline };
     const [xmlUrl, pdfUrl] = await Promise.all([
       this.documentLinks.link(request.documentsBucket, request.nfseXmlKey, `nfse-${request.nfseNumber}.xml`),
       this.documentLinks.link(request.documentsBucket, request.nfsePdfKey, `danfse-${request.nfseNumber}.pdf`),
     ]);
-    return { ...view, xmlUrl, pdfUrl };
+    return { ...view, timeline, xmlUrl, pdfUrl };
   }
 
   @Get()

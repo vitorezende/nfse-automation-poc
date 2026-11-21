@@ -2,6 +2,7 @@ package poc.nfse.robot.messaging;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,8 @@ public class RetryScheduler {
     }
   }
 
-  public void onTransientFailure(Message original, IssueNfseCommand command, int attempt, String reason) {
+  public void onTransientFailure(Message original, IssueNfseCommand command, int attempt, String reason,
+      Map<String, Object> artifacts) {
     if (attempt <= delays.size()) {
       Duration delay = delays.get(attempt - 1);
       Message retry = MessageBuilder.fromMessage(original)
@@ -53,17 +55,17 @@ public class RetryScheduler {
       sendConfirmed(RETRY_QUEUE_PREFIX + attempt, retry);
       // The retry is safely queued; from here nothing may throw, or the listener's in-process retry would
       // run the attempt again and put a second copy in flight. The event is informational: best effort.
-      publishQuietly(() -> events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason));
+      publishQuietly(() -> events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason, artifacts));
       log.info("Retry {} of {} scheduled in {}", attempt, delays.size(), delay);
     } else {
       Message parked = MessageBuilder.fromMessage(original)
           .setHeader("x-final-attempt", attempt)
           .setHeader("x-failure-reason", reason)
           .build();
-      publishQuietly(() -> events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason));
+      publishQuietly(() -> events.publishFailure("NfseIssuanceAttemptFailed", command, attempt, "transient", reason, artifacts));
       // The final failure must reach the Portal da Contabilidade, so it is published before parking: if it
       // fails, nothing has been sent yet and repeating the attempt is safe.
-      events.publishFailure("NfseIssuanceFailed", command, attempt, "transient", "Retries exhausted: " + reason);
+      events.publishFailure("NfseIssuanceFailed", command, attempt, "transient", "Retries exhausted: " + reason, artifacts);
       sendConfirmed(DLQ, parked);
       log.warn("Retries exhausted after {} attempts; command parked in {}", attempt, DLQ);
     }

@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -74,14 +76,18 @@ public class EventPublisher {
     log.info("Published {} {}", type, messageId);
   }
 
-  public void publishFailure(String type, IssueNfseCommand cause, int attempt, String category, String reason) {
+  /** @param artifacts screenshot/trace references of the failed attempt; omitted from the event when empty */
+  public void publishFailure(String type, IssueNfseCommand cause, int attempt, String category, String reason,
+      Map<String, Object> artifacts) {
     String routingKey = "NfseIssuanceFailed".equals(type) ? "nfse.issuance.failed" : "nfse.issuance.attempt-failed";
-    publish(type, routingKey, cause, java.util.Map.of(
-        "issuanceRequestId", cause.payload().issuanceRequestId(),
-        "rps", cause.payload().rps(),
-        "attempt", attempt,
-        "errorCategory", category,
-        "reason", reason == null || reason.isBlank() ? "unknown" : reason));
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("issuanceRequestId", cause.payload().issuanceRequestId());
+    payload.put("rps", cause.payload().rps());
+    payload.put("attempt", attempt);
+    payload.put("errorCategory", category);
+    payload.put("reason", reason == null || reason.isBlank() ? "unknown" : reason);
+    if (!artifacts.isEmpty()) payload.put("artifacts", artifacts);
+    publish(type, routingKey, cause, payload);
   }
 
   private byte[] serialize(ObjectNode event) {
