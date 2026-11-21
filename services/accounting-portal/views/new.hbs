@@ -17,7 +17,7 @@
     <label for="amount">Valor do serviço (R$)</label>
     <input id="amount" name="amount" value="{{form.amount}}" placeholder="1500.00" inputmode="decimal">
     <label for="competencia">Competência</label>
-    <input id="competencia" name="competencia" type="month" value="{{form.competencia}}">
+    <input id="competencia" name="competencia" type="month" value="{{form.competencia}}" placeholder="2026-11" pattern="\d{4}-\d{2}|\d{2}/\d{4}" title="AAAA-MM ou MM/AAAA">
     <label for="discriminacao">Discriminação</label>
     <textarea id="discriminacao" name="discriminacao">{{form.discriminacao}}</textarea>
     <p><button class="btn" type="submit">Salvar como Rascunho</button></p>

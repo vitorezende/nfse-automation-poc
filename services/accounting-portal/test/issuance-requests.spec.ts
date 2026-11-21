@@ -109,6 +109,24 @@ describe('Solicitação de Emissão', () => {
     expect(field(second, 'rps')).toBe('2 / A');
   });
 
+  it('accepts a Competência typed as MM/AAAA and dispatches it as AAAA-MM', async () => {
+    const location = await createIssuanceRequest({ competencia: '11/2026' });
+    await http().post(`${location}/emitir`).expect(302);
+
+    const command = await harness.takeCommand();
+    expect(validateMessage(command).errors).toEqual([]);
+    expect(command!.payload).toMatchObject({ competencia: '2026-11' });
+  });
+
+  it.each(['13/2026', 'nov/2026', '2026-1'])('rejects the Competência %s', async (competencia) => {
+    const response = await http()
+      .post('/solicitacoes')
+      .type('form')
+      .send({ prestadorCnpj: '11.111.111/0001-11', servicoCode: '01.07', tomadorCnpj: '1', tomadorName: 'X', amount: '10.00', competencia, discriminacao: 'X' });
+    expect(response.status).toBe(422);
+    expect(response.text).toContain('Informe a competência no formato AAAA-MM, por exemplo 2026-11.');
+  });
+
   it('rejects a Serviço outside the Prestador catalogue', async () => {
     const response = await http()
       .post('/solicitacoes')
