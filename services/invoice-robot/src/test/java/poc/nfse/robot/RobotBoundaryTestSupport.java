@@ -119,6 +119,8 @@ public abstract class RobotBoundaryTestSupport {
         () -> Path.of("src/test/resources/test-credentials.json").toAbsolutePath().toString());
     // Short backoff so retry scenarios finish quickly; the production default is 10s, 1m, 5m.
     registry.add("robot.retry-delays", () -> "1s,1s,1s");
+    // A phantom timeout should be noticed quickly in tests; production waits 15s per page step.
+    registry.add("robot.navigation-timeout", () -> "6s");
     registry.add("robot.storage.endpoint", RobotBoundaryTestSupport::objectStorageUrl);
     registry.add("robot.storage.bucket", () -> BUCKET);
     registry.add("robot.storage.access-key", () -> "poc-access-key");
@@ -158,7 +160,20 @@ public abstract class RobotBoundaryTestSupport {
   }
 
   static void resetChaos() throws Exception {
-    setChaos("latencyMinMs=0&latencyMaxMs=0&submitErrorPercent=0&sessionExpiryPercent=0");
+    setChaos("latencyMinMs=0&latencyMaxMs=0&submitErrorPercent=0&sessionExpiryPercent=0&phantomTimeoutPercent=0");
+  }
+
+  /** How many NFS-e the Prestador sees for this RPS in the Prefeitura's list of latest NFS-e. */
+  static long cityHallNfseCountForRps(String username, String password, int rpsNumber, String rpsSeries) throws Exception {
+    HttpClient http = HttpClient.newBuilder().cookieHandler(new CookieManager()).build();
+    String form = "username=" + username + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8);
+    http.send(HttpRequest.newBuilder(URI.create(cityHallUrl() + "/login"))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .POST(HttpRequest.BodyPublishers.ofString(form)).build(), HttpResponse.BodyHandlers.discarding());
+    String home = http.send(HttpRequest.newBuilder(URI.create(cityHallUrl() + "/")).build(),
+        HttpResponse.BodyHandlers.ofString()).body();
+    String cell = "<td>" + rpsNumber + " / " + rpsSeries + "</td>";
+    return home.split(java.util.regex.Pattern.quote(cell), -1).length - 1L;
   }
 
   /** Looks the RPS up on the Portal da Prefeitura as the given Prestador, like a human would. */

@@ -6,6 +6,7 @@
     <tr><td class="label"><label for="latencyMaxMs">Latência máxima (ms)</label></td><td><input type="text" id="latencyMaxMs" name="latencyMaxMs" value="{{settings.latencyMaxMs}}"></td></tr>
     <tr><td class="label"><label for="submitErrorPercent">Erro 500 na emissão (%)</label></td><td><input type="text" id="submitErrorPercent" name="submitErrorPercent" value="{{settings.submitErrorPercent}}"></td></tr>
     <tr><td class="label"><label for="sessionExpiryPercent">Sessão expira na emissão (%)</label></td><td><input type="text" id="sessionExpiryPercent" name="sessionExpiryPercent" value="{{settings.sessionExpiryPercent}}"> <small>nunca duas vezes seguidas para o mesmo Prestador</small></td></tr>
+    <tr><td class="label"><label for="phantomTimeoutPercent">Timeout fantasma na emissão (%)</label></td><td><input type="text" id="phantomTimeoutPercent" name="phantomTimeoutPercent" value="{{settings.phantomTimeoutPercent}}"> <small>a NFS-e é emitida, mas a resposta nunca chega</small></td></tr>
     <tr><td class="label"><label for="maintenance">Manutenção programada</label></td><td><input type="checkbox" id="maintenance" name="maintenance" {{#if settings.maintenance}}checked{{/if}}> <small>todas as páginas respondem HTTP 200 com aviso de manutenção</small></td></tr>
     <tr><td class="label"><label for="captcha">Captcha no login</label></td><td><input type="checkbox" id="captcha" name="captcha" {{#if settings.captcha}}checked{{/if}}></td></tr>
     <tr><td></td><td><button type="submit" class="btn">Aplicar</button></td></tr>
