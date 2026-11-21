@@ -1,69 +1,69 @@
 # Robô de Emissão
 
-Java 21 + Spring Boot 3 + Spring AMQP + Playwright. It consumes `IssueNfse` commands from `robot.issue-nfse` and drives the Portal da Prefeitura with a real browser. It reports progress and outcome as events on `nfse.events` (ADR 0003).
+Java 21 + Spring Boot 3 + Spring AMQP + Playwright. Consome comandos `IssueNfse` da fila `robot.issue-nfse` e opera o Portal da Prefeitura com um navegador real. Reporta o andamento e o resultado como eventos em `nfse.events` (ADR 0003).
 
-## Per command
+## Por comando
 
 ```text
-validate against contracts/schemas          → parked in robot.issue-nfse.dlq on violation
-publish NfseIssuanceStarted (confirmed)
-resolve credentialRef → login               (credential store; passwords never travel in messages)
-log in to the Portal da Prefeitura
-query by RPS → found? reuse it : issue it   (ADR 0002)
-download XML + DANFSe PDF (same session)
-upload both to object storage               (claim check, ADR 0004)
-publish NfseIssued with the object refs (confirmed)
+valida contra contracts/schemas             → estacionado em robot.issue-nfse.dlq se violar o contrato
+publica NfseIssuanceStarted (confirmado)
+resolve credentialRef → login               (cofre de credenciais; senhas nunca trafegam nas mensagens)
+faz login no Portal da Prefeitura
+consulta por RPS → encontrou? reutiliza : emite   (ADR 0002)
+baixa XML + PDF do DANFSe (mesma sessão)
+envia os dois ao armazenamento de objetos   (claim check, ADR 0004)
+publica NfseIssued com as referências dos objetos (confirmado)
 ack
 
-captcha on the login page                        → solved (plain arithmetic, by design machine-solvable)
-session expired mid-flow (sent back to /login)   → log in again and continue, up to 2× per attempt
-maintenance page (HTTP 200, detected by content) → transient
-phantom timeout (issued, response lost)          → transient; the retry finds the NFS-e by RPS and reports it
-redelivered command (crash before ack)           → found by RPS, NfseIssued again with the same number
-business failure (bad credentials, data refused) → NfseIssuanceFailed(business), ack, no retry
-transient failure (HTTP 5xx, timeout, browser)   → NfseIssuanceAttemptFailed(transient)
-    attempt ≤ 3 → republish to robot.issue-nfse.retry-N with expiration 10s | 1m | 5m and x-attempt+1
-                  (dead-lettered back to robot.issue-nfse when it expires)
-    attempt = 4 → park in robot.issue-nfse.dlq, NfseIssuanceFailed(transient)
-    every republish is broker-confirmed before the original is acked; AttemptFailed is best effort after it,
-    and on the DLQ path NfseIssuanceFailed is published before parking (a failure there is safe to repeat)
+captcha na página de login                         → resolvido (aritmética simples, resolvível por máquina de propósito)
+sessão expirada no meio do fluxo (volta ao /login) → faz login de novo e continua, até 2× por tentativa
+página de manutenção (HTTP 200, detectada pelo conteúdo) → transitória
+timeout fantasma (emitida, resposta perdida)       → transitória; a retentativa encontra a NFS-e pelo RPS e a reporta
+comando reentregue (queda antes do ack)            → encontrado pelo RPS, NfseIssued de novo com o mesmo número
+falha de negócio (credencial errada, dados recusados) → NfseIssuanceFailed(business), ack, sem retentativa
+falha transitória (HTTP 5xx, timeout, navegador)   → NfseIssuanceAttemptFailed(transient)
+    tentativa ≤ 3 → republica em robot.issue-nfse.retry-N com expiração 10s | 1m | 5m e x-attempt+1
+                    (volta por dead-letter para robot.issue-nfse quando expira)
+    tentativa = 4 → estaciona em robot.issue-nfse.dlq, NfseIssuanceFailed(transient)
+    toda republicação é confirmada pelo broker antes do ack da original; AttemptFailed é publicado depois,
+    em melhor esforço, e no caminho da DLQ o NfseIssuanceFailed sai antes de estacionar (repeti-lo é seguro)
 
-unexpected error (e.g. no broker confirm)        → 3 in-process tries (1s, 2s, 4s), then parked in the DLQ
+erro inesperado (por exemplo, sem confirmação do broker) → 3 tentativas em processo (1s, 2s, 4s), depois estaciona na DLQ
 ```
 
-## Failure artifacts
+## Artefatos de falha
 
-Every attempt runs under a Playwright trace (screenshots + DOM snapshots). On success the trace is discarded. On any failure on the Prefeitura's pages, business or transient, the robot uploads a full-page screenshot and the trace to object storage:
+Toda tentativa roda sob um trace do Playwright (capturas de tela + snapshots do DOM). Em caso de sucesso, o trace é descartado. Em qualquer falha nas páginas da Prefeitura, de negócio ou transitória, o robô envia ao armazenamento de objetos uma captura de tela da página inteira e o trace:
 
 ```text
-<issuanceRequestId>/failures/<command messageId>/attempt-<n>/screenshot.png
-<issuanceRequestId>/failures/<command messageId>/attempt-<n>/trace.zip
+<issuanceRequestId>/failures/<messageId do comando>/attempt-<n>/screenshot.png
+<issuanceRequestId>/failures/<messageId do comando>/attempt-<n>/trace.zip
 ```
 
-The references travel in `payload.artifacts` of `NfseIssuanceAttemptFailed` / `NfseIssuanceFailed`. The command's `messageId` is part of the key, so a Reprocessamento (a new command whose attempts restart at 1) never overwrites earlier evidence. Failures before the browser has a page (unknown `credentialRef`, a browser that won't launch) and claim-check uploads after issuance carry no artifacts: there is no page to show. When retries run out, `NfseIssuanceFailed` repeats the last attempt's references. Recording is best effort: if an upload fails, the event goes out without that reference and the attempt's outcome doesn't change. Open a trace with `npx playwright show-trace trace.zip` or at https://trace.playwright.dev.
+As referências vão em `payload.artifacts` de `NfseIssuanceAttemptFailed` / `NfseIssuanceFailed`. O `messageId` do comando faz parte da chave, então um Reprocessamento (um novo comando, cujas tentativas recomeçam em 1) nunca sobrescreve evidências anteriores. Falhas antes de o navegador ter uma página (`credentialRef` desconhecida, navegador que não inicia) e envios do claim check depois da emissão não trazem artefatos: não há página para mostrar. Quando as retentativas acabam, `NfseIssuanceFailed` repete as referências da última tentativa. O registro é de melhor esforço: se um envio falhar, o evento sai sem aquela referência e o resultado da tentativa não muda. Abra um trace com `npx playwright show-trace trace.zip` ou em https://trace.playwright.dev.
 
-Each page step waits for an explicit outcome (the logged-in menu or an alert, the NFS-e number or an alert), never for a bare load state. Every navigation checks the HTTP status.
+Cada passo de página espera por um resultado explícito (o menu de usuário logado ou um alerta, o número da NFS-e ou um alerta), nunca apenas pelo carregamento da página. Toda navegação confere o status HTTP.
 
-Every log line carries the instance hostname, the thread and the command's correlation ID.
+Toda linha de log traz o hostname da instância, a thread e o correlation ID do comando.
 
-## Concurrency and scaling
+## Concorrência e escala
 
-- Each instance runs `ROBOT_CONCURRENCY` (default 3) consumer threads, each with one unacked command (prefetch 1).
-- Playwright for Java is **not thread-safe**: its objects must stay on the thread that created them. So each consumer thread owns its own Playwright + Browser (`BrowserPool`), and every Solicitação gets a fresh, isolated `BrowserContext`. Cookies and sessions never cross between concurrent issuances.
-- Scale out with `docker compose up -d --scale invoice-robot=3`. Instances compete for `robot.issue-nfse`, and each exposes `/actuator/health/liveness`, which compose uses as its healthcheck.
+- Cada instância roda `ROBOT_CONCURRENCY` (padrão 3) threads consumidoras, cada uma com um comando sem ack por vez (prefetch 1).
+- O Playwright para Java **não é thread-safe**: seus objetos precisam ficar na thread que os criou. Por isso cada thread consumidora tem seu próprio Playwright + Browser (`BrowserPool`), e cada Solicitação ganha um `BrowserContext` novo e isolado. Cookies e sessões nunca passam de uma emissão concorrente para outra.
+- Escale horizontalmente com `docker compose up -d --scale invoice-robot=3`. As instâncias competem pela fila `robot.issue-nfse`, e cada uma expõe `/actuator/health/liveness`, usado pelo compose como healthcheck.
 
-## Configuration
+## Configuração
 
-| Env | Default | Purpose |
+| Variável | Padrão | Finalidade |
 | --- | --- | --- |
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` | `localhost` / `5672` | Broker |
 | `CITY_HALL_URL` | `http://localhost:3001` | Portal da Prefeitura |
-| `CREDENTIALS_FILE` | `../../infra/robot/credentials.json` | Secret store: credentialRef → Prefeitura login |
-| `HEADLESS` | `true` | Set `false` locally to watch the browser |
-| `RETRY_DELAYS` | `10s,1m,5m` | Backoff per retry (at most 3, one per retry queue) |
-| `ROBOT_CONCURRENCY` | `3` | Concurrent issuances per instance |
-| `S3_ENDPOINT` / `S3_BUCKET` | `http://localhost:8333` / `nfse-documents` | Object storage for the documents |
+| `CREDENTIALS_FILE` | `../../infra/robot/credentials.json` | Cofre de segredos: credentialRef → login na Prefeitura |
+| `HEADLESS` | `true` | Use `false` localmente para ver o navegador |
+| `RETRY_DELAYS` | `10s,1m,5m` | Backoff por retentativa (no máximo 3, uma por fila de retentativa) |
+| `ROBOT_CONCURRENCY` | `3` | Emissões simultâneas por instância |
+| `S3_ENDPOINT` / `S3_BUCKET` | `http://localhost:8333` / `nfse-documents` | Armazenamento de objetos para os documentos |
 
-## Tests
+## Testes
 
-`mvn test` (Java 21, Docker required) runs the seam 1 boundary tests. The Portal da Prefeitura is built from its Dockerfile, alongside Postgres and RabbitMQ (with the real definitions), and the test asserts on the published events and on the NFS-e at the Prefeitura.
+`mvn test` (Java 21, requer Docker) executa os testes de fronteira da seam 1. O Portal da Prefeitura é construído a partir do seu Dockerfile, junto com Postgres e RabbitMQ (com as definições reais), e os testes verificam os eventos publicados e a NFS-e na Prefeitura.

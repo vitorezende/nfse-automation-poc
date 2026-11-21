@@ -1,37 +1,37 @@
-# Portal da Prefeitura (fake)
+# Portal da Prefeitura (fictício)
 
-A deliberately legacy-looking, web-only NFS-e portal used as the target of the Robô de Emissão. It has no API and never touches RabbitMQ (ADR 0001). All data is fictitious, and every page says so.
+Um portal de NFS-e só web, com aparência propositalmente legada, usado como alvo do Robô de Emissão. Não tem API e nunca se comunica com o RabbitMQ (ADR 0001). Todos os dados são fictícios, e todas as páginas avisam isso.
 
-## Pages
+## Páginas
 
-| Path | Purpose |
+| Caminho | Finalidade |
 | --- | --- |
-| `/login` | Username/password login per Prestador (cookie session `PREFSESSID`, 30 min) |
-| `/` | Latest NFS-e of the logged-in Prestador |
-| `/nfse/emitir` | Issuance form (classic form post). Rejects a duplicate RPS per Prestador |
-| `/nfse/consulta?rpsNumber=&rpsSeries=` | Query NFS-e by RPS |
-| `/nfse/:id` | NFS-e detail (number, verification code, ISS) |
-| `/nfse/:id/xml`, `/nfse/:id/pdf` | Simplified unsigned XML; DANFSe PDF always watermarked "SIMULAÇÃO – SEM VALOR FISCAL" |
-| `/admin/chaos` | Chaos mode (no login), applied immediately: random latency, HTTP 500 on issuance, session expiry on issuance (never twice in a row per Prestador), phantom timeout on issuance (the NFS-e is issued, the response never arrives), scheduled maintenance served with HTTP 200, arithmetic captcha on login |
+| `/login` | Login com usuário e senha por Prestador (sessão em cookie `PREFSESSID`, 30 min) |
+| `/` | Últimas NFS-e do Prestador logado |
+| `/nfse/emitir` | Formulário de emissão (post de formulário clássico). Recusa RPS duplicado por Prestador |
+| `/nfse/consulta?rpsNumber=&rpsSeries=` | Consulta de NFS-e por RPS |
+| `/nfse/:id` | Detalhe da NFS-e (número, código de verificação, ISS) |
+| `/nfse/:id/xml`, `/nfse/:id/pdf` | XML simplificado e sem assinatura; PDF do DANFSe sempre com a marca d'água "SIMULAÇÃO – SEM VALOR FISCAL" |
+| `/admin/chaos` | Modo caos (sem login), aplicado na hora: latência aleatória, HTTP 500 na emissão, expiração de sessão na emissão (nunca duas vezes seguidas para o mesmo Prestador), timeout fantasma na emissão (a NFS-e é emitida, mas a resposta nunca chega), manutenção programada servida com HTTP 200 e captcha aritmético no login |
 
-## Seeded Prestadores
+## Prestadores pré-cadastrados
 
-These must match the robot's credential store and the Portal da Contabilidade seed.
+Precisam coincidir com o cofre de credenciais do robô e com os dados iniciais do Portal da Contabilidade.
 
-| Prestador | CNPJ | Username | Password |
+| Prestador | CNPJ | Usuário | Senha |
 | --- | --- | --- | --- |
 | ACME Tecnologia Ltda | 11.111.111/0001-11 | `acme` | `acme-pass` |
 | Beta Consultoria ME | 22.333.444/0001-55 | `beta` | `beta-pass` |
 | Gama Engenharia S.A. | 33.444.555/0001-66 | `gama` | `gama-pass` |
 
-## Running locally
+## Execução local
 
 ```bash
-cp .env.example .env            # DATABASE_URL for the compose Postgres
+cp .env.example .env            # DATABASE_URL do Postgres do compose
 npm install
 npx prisma migrate deploy
 npm run build && npm run seed
 npm run start:prod              # http://localhost:3001
 ```
 
-Or run `docker compose up city-hall-portal` from the repository root.
+Ou execute `docker compose up city-hall-portal` a partir da raiz do repositório.
