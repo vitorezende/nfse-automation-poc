@@ -64,6 +64,8 @@ model IssuanceRequest {
   nfseVerificationCode String?
   nfseIssuedAt        DateTime?
   failureReason       String?
+  /// Set when the operator asks to reprocess a failed Solicitação; cleared once the new command is published.
+  reprocessRequestedAt DateTime?
   timeline            TimelineEntry[]
 
   @@unique([prestadorId, rpsNumber, rpsSeries])

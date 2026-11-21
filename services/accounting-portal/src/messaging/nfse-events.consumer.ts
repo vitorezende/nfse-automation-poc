@@ -83,9 +83,19 @@ export class NfseEventsConsumer {
         const transition = TRANSITIONS[event.type];
         if (transition) {
           await tx.issuanceRequest.updateMany({
-            where: { id: issuanceRequestId, status: { in: transition.from } },
+            where: {
+              id: issuanceRequestId,
+              OR: [
+                { status: { in: transition.from } },
+                // A Falhou Solicitação with a pending Reprocessamento is effectively Enviada: the new round's
+                // events may arrive before the outbox relay has marked it so.
+                ...(transition.from.includes('DISPATCHED') ? [{ status: 'FAILED' as const, reprocessRequestedAt: { not: null } }] : []),
+              ],
+            },
             data: {
               status: transition.to,
+              // Once the new round reports back, the relay must no longer treat the row as pending.
+              reprocessRequestedAt: null,
               ...(event.type === 'NfseIssued' && {
                 nfseNumber: event.payload.nfse!.number,
                 nfseVerificationCode: event.payload.nfse!.verificationCode,

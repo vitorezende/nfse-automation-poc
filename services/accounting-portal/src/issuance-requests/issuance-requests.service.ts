@@ -15,6 +15,9 @@ export interface CreateIssuanceRequestForm {
 
 export class InvalidIssuanceRequestError extends Error {}
 
+/** The Solicitação is not in a state that allows the requested action. */
+export class IssuanceRequestStateError extends Error {}
+
 export type IssuanceRequestWithPrestador = IssuanceRequest & { prestador: Prestador; timeline?: TimelineEntry[] };
 
 @Injectable()
@@ -77,6 +80,40 @@ export class IssuanceRequestsService {
           exchange: '',
           routingKey: ISSUE_NFSE_QUEUE,
           message: buildIssueNfseCommand(request, request.prestador),
+        },
+      });
+    });
+  }
+
+  /**
+   * Reprocessamento: re-dispatches a failed Solicitação with its original RPS, so the robot's lookup by RPS
+   * makes a second NFS-e impossible (ADR 0002). Goes through the outbox like the first dispatch.
+   */
+  async reprocess(id: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const request = await tx.issuanceRequest.findUnique({ where: { id }, include: { prestador: true } });
+      if (!request) throw new InvalidIssuanceRequestError('Solicitação não encontrada.');
+      // Conditional update as the guard: concurrent clicks produce a single command.
+      const { count } = await tx.issuanceRequest.updateMany({
+        where: { id, status: 'FAILED', reprocessRequestedAt: null },
+        data: { reprocessRequestedAt: new Date() },
+      });
+      if (count === 0) {
+        if (request.status === 'FAILED') return; // already requested: no-op
+        throw new IssuanceRequestStateError('Somente Solicitações com falha podem ser reprocessadas.');
+      }
+      const command = buildIssueNfseCommand(request, request.prestador);
+      await tx.outboxMessage.create({
+        data: { issuanceRequestId: id, exchange: '', routingKey: ISSUE_NFSE_QUEUE, message: command },
+      });
+      await tx.timelineEntry.create({
+        data: {
+          issuanceRequestId: id,
+          messageId: command.messageId,
+          type: 'Reprocessamento',
+          attempt: 0,
+          detail: `Novo comando com o RPS original ${request.rpsNumber} / ${request.rpsSeries}`,
+          occurredAt: new Date(),
         },
       });
     });
