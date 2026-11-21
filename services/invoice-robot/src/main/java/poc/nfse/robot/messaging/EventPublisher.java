@@ -74,6 +74,16 @@ public class EventPublisher {
     log.info("Published {} {}", type, messageId);
   }
 
+  public void publishFailure(String type, IssueNfseCommand cause, int attempt, String category, String reason) {
+    String routingKey = "NfseIssuanceFailed".equals(type) ? "nfse.issuance.failed" : "nfse.issuance.attempt-failed";
+    publish(type, routingKey, cause, java.util.Map.of(
+        "issuanceRequestId", cause.payload().issuanceRequestId(),
+        "rps", cause.payload().rps(),
+        "attempt", attempt,
+        "errorCategory", category,
+        "reason", reason == null || reason.isBlank() ? "unknown" : reason));
+  }
+
   private byte[] serialize(ObjectNode event) {
     try {
       return json.writeValueAsBytes(event);

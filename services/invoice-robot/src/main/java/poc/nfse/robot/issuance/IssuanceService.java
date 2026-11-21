@@ -13,7 +13,11 @@ import poc.nfse.robot.credentials.CredentialStore;
 import poc.nfse.robot.credentials.CredentialStore.Credentials;
 import poc.nfse.robot.messaging.EventPublisher;
 
-/** Issues one NFS-e for one IssueNfse command, reporting progress and outcome as events. */
+/**
+ * Runs one attempt at issuing the NFS-e for an IssueNfse command. Publishes NfseIssuanceStarted and, when the
+ * attempt ends for good, NfseIssued or NfseIssuanceFailed. Transient failures are returned to the caller, which
+ * decides between retrying and giving up.
+ */
 @Service
 public class IssuanceService {
 
@@ -31,7 +35,7 @@ public class IssuanceService {
     this.properties = properties;
   }
 
-  public void issue(IssueNfseCommand command, int attempt) {
+  public IssuanceOutcome attempt(IssueNfseCommand command, int attempt) {
     IssueNfseCommand.Payload payload = command.payload();
     events.publish("NfseIssuanceStarted", "nfse.issuance.started", command, Map.of(
         "issuanceRequestId", payload.issuanceRequestId(), "rps", payload.rps(), "attempt", attempt));
@@ -40,15 +44,17 @@ public class IssuanceService {
     try {
       nfse = issueOnCityHall(payload);
     } catch (BusinessFailureException e) {
-      reportFailure(command, attempt, "business", e);
-      return;
+      log.warn("Issuance failed for good (business): {}", e.getMessage());
+      events.publishFailure("NfseIssuanceFailed", command, attempt, "business", e.getMessage());
+      return new IssuanceOutcome.BusinessFailure(e.getMessage());
     } catch (RuntimeException e) {
-      // Retries with backoff and the dead-letter queue arrive in #9; until then fail visibly, never silently.
-      reportFailure(command, attempt, "transient", e);
-      return;
+      // Server errors, timeouts, browser hiccups: anything not known to be final is worth a retry.
+      String reason = e.getMessage() == null ? e.getClass().getSimpleName() : firstLine(e.getMessage());
+      log.warn("Attempt {} failed (transient): {}", attempt, reason);
+      return new IssuanceOutcome.TransientFailure(reason);
     }
-    log.info("NFS-e {} issued for RPS {}/{}", nfse.number(), payload.rps().number(), payload.rps().series());
 
+    log.info("NFS-e {} issued for RPS {}/{}", nfse.number(), payload.rps().number(), payload.rps().series());
     events.publish("NfseIssued", "nfse.issued", command, Map.of(
         "issuanceRequestId", payload.issuanceRequestId(),
         "rps", payload.rps(),
@@ -57,6 +63,7 @@ public class IssuanceService {
             "number", nfse.number(),
             "verificationCode", nfse.verificationCode(),
             "issuedAt", nfse.issuedAt().toString())));
+    return new IssuanceOutcome.Issued(nfse);
   }
 
   private IssuedNfse issueOnCityHall(IssueNfseCommand.Payload payload) {
@@ -77,14 +84,8 @@ public class IssuanceService {
     }
   }
 
-  private void reportFailure(IssueNfseCommand command, int attempt, String category, RuntimeException error) {
-    String reason = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-    log.warn("Issuance failed ({}): {}", category, reason);
-    events.publish("NfseIssuanceFailed", "nfse.issuance.failed", command, Map.of(
-        "issuanceRequestId", command.payload().issuanceRequestId(),
-        "rps", command.payload().rps(),
-        "attempt", attempt,
-        "errorCategory", category,
-        "reason", reason.length() > 500 ? reason.substring(0, 500) : reason));
+  private static String firstLine(String message) {
+    String line = message.lines().findFirst().orElse(message);
+    return line.length() > 500 ? line.substring(0, 500) : line;
   }
 }

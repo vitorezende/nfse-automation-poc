@@ -11,6 +11,7 @@ A deliberately legacy-looking, web-only NFS-e portal used as the target of the R
 | `/nfse/emitir` | Issuance form (classic form post). Rejects a duplicate RPS per Prestador |
 | `/nfse/consulta?rpsNumber=&rpsSeries=` | Query NFS-e by RPS |
 | `/nfse/:id` | NFS-e detail (number, verification code, ISS) |
+| `/admin/chaos` | Chaos mode (no login): random latency and HTTP 500 probability on issuance; applies immediately |
 
 ## Seeded Prestadores
 
