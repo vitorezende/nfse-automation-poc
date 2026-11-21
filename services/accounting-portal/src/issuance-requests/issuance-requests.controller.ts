@@ -14,6 +14,7 @@ import {
 function toView(request: IssuanceRequestWithPrestador) {
   return {
     id: request.id,
+    correlationId: request.correlationId,
     status: request.status,
     statusLabel:
       request.status === 'DRAFT' && request.dispatchRequestedAt ? 'Rascunho (envio pendente)' : STATUS_LABELS[request.status],
