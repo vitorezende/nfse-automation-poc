@@ -91,6 +91,7 @@ public class CityHallPortal {
 
   private byte[] download(String kind) {
     String href = page.locator("[data-download=\"" + kind + "\"]").getAttribute("href");
+    if (href == null) throw new IllegalStateException("No " + kind + " download link on the NFS-e detail page");
     APIResponse response = page.context().request().get(baseUrl + href);
     if (response.status() >= 500) throw new TransientFailureException("Prefeitura answered HTTP " + response.status() + " downloading " + kind);
     if (!response.ok()) throw new IllegalStateException("Could not download " + kind + ": HTTP " + response.status());
