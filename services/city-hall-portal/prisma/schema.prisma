@@ -1,0 +1,43 @@
+// Portal da Prefeitura (fake): its own private database (ADR 0001).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Prestador {
+  id           Int    @id @default(autoincrement())
+  cnpj         String @unique
+  name         String
+  username     String @unique
+  passwordHash String
+  nfses        Nfse[]
+}
+
+model Nfse {
+  id                 Int       @id @default(autoincrement())
+  number             String?   @unique
+  verificationCode   String
+  prestador          Prestador @relation(fields: [prestadorId], references: [id])
+  prestadorId        Int
+  rpsNumber          Int
+  rpsSeries          String
+  tomadorCnpj        String
+  tomadorName        String
+  servicoCode        String
+  servicoDescription String
+  issRate            Decimal   @db.Decimal(7, 4)
+  amount             Decimal   @db.Decimal(14, 2)
+  issAmount          Decimal   @db.Decimal(14, 2)
+  competencia        String
+  discriminacao      String
+  issuedAt           DateTime  @default(now())
+
+  // A Prefeitura accepts each RPS at most once per Prestador (ADR 0002).
+  @@unique([prestadorId, rpsNumber, rpsSeries])
+}

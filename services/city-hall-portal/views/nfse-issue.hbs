@@ -1,0 +1,17 @@
+<h2>Emissão de NFS-e</h2>
+{{#if error}}<div class="error" role="alert">{{error}}</div>{{/if}}
+<form method="post" action="/nfse/emitir">
+  <table class="form">
+    <tr><td class="label"><label for="rpsNumber">Número do RPS</label></td><td><input type="text" id="rpsNumber" name="rpsNumber" value="{{form.rpsNumber}}"></td></tr>
+    <tr><td class="label"><label for="rpsSeries">Série do RPS</label></td><td><input type="text" id="rpsSeries" name="rpsSeries" value="{{form.rpsSeries}}"></td></tr>
+    <tr><td class="label"><label for="tomadorCnpj">CNPJ do tomador</label></td><td><input type="text" id="tomadorCnpj" name="tomadorCnpj" value="{{form.tomadorCnpj}}"></td></tr>
+    <tr><td class="label"><label for="tomadorName">Razão social do tomador</label></td><td><input type="text" id="tomadorName" name="tomadorName" value="{{form.tomadorName}}"></td></tr>
+    <tr><td class="label"><label for="servicoCode">Código do serviço</label></td><td><input type="text" id="servicoCode" name="servicoCode" value="{{form.servicoCode}}"></td></tr>
+    <tr><td class="label"><label for="servicoDescription">Descrição do serviço</label></td><td><input type="text" id="servicoDescription" name="servicoDescription" value="{{form.servicoDescription}}"></td></tr>
+    <tr><td class="label"><label for="issRatePercent">Alíquota do ISS (%)</label></td><td><input type="text" id="issRatePercent" name="issRatePercent" value="{{form.issRatePercent}}"></td></tr>
+    <tr><td class="label"><label for="amount">Valor do serviço (R$)</label></td><td><input type="text" id="amount" name="amount" value="{{form.amount}}"></td></tr>
+    <tr><td class="label"><label for="competencia">Competência</label></td><td><input type="month" id="competencia" name="competencia" value="{{form.competencia}}"></td></tr>
+    <tr><td class="label"><label for="discriminacao">Discriminação do serviço</label></td><td><textarea id="discriminacao" name="discriminacao">{{form.discriminacao}}</textarea></td></tr>
+    <tr><td></td><td><button type="submit" class="btn">Emitir NFS-e</button></td></tr>
+  </table>
+</form>

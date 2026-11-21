@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} - NFS-e Cidade Fictícia</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <style>
+    body { margin: 0; font: 13px Verdana, Arial, sans-serif; background: #e9eef3; color: #222; }
+    .simulation { background: #b30000; color: #fff; text-align: center; font-weight: bold; padding: 4px; letter-spacing: 1px; }
+    header { background: linear-gradient(#1f4e79, #163a5a); color: #fff; padding: 10px 16px; border-bottom: 4px solid #f0b400; }
+    header h1 { margin: 0; font-size: 18px; }
+    header small { color: #cfe0f0; }
+    nav { background: #d4dde6; padding: 6px 16px; border-bottom: 1px solid #a9b8c6; }
+    nav a, nav button { color: #163a5a; margin-right: 14px; font-weight: bold; text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer; }
+    nav form { display: inline; }
+    nav .who { float: right; color: #444; font-weight: normal; }
+    main { max-width: 900px; margin: 16px auto; background: #fff; border: 1px solid #a9b8c6; padding: 16px; }
+    h2 { font-size: 15px; color: #1f4e79; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+    table.form td { padding: 4px 6px; vertical-align: top; }
+    table.form td.label { text-align: right; width: 200px; font-weight: bold; }
+    table.grid { border-collapse: collapse; width: 100%; }
+    table.grid th, table.grid td { border: 1px solid #b7c4d1; padding: 4px 6px; text-align: left; }
+    table.grid th { background: #d4dde6; }
+    input[type=text], input[type=password], input[type=month], textarea { width: 280px; border: 1px solid #8a9aa9; padding: 3px; font: inherit; }
+    textarea { width: 420px; height: 70px; }
+    .btn { background: #1f4e79; color: #fff; border: 1px solid #0f2c47; padding: 4px 14px; font: inherit; cursor: pointer; }
+    .error { background: #fde2e2; border: 1px solid #c00; color: #900; padding: 6px 10px; margin-bottom: 10px; }
+    .success { background: #e4f4e4; border: 1px solid #3a8a3a; color: #1e5a1e; padding: 6px 10px; margin-bottom: 10px; }
+    footer { text-align: center; color: #667; font-size: 11px; margin: 12px 0 24px; }
+    @media (max-width: 640px) { table.form td.label { width: auto; text-align: left; display: block; } table.form td { display: block; } input[type=text], textarea { width: 95%; } }
+  </style>
+</head>
+<body>
+  <div class="simulation">AMBIENTE DE SIMULAÇÃO - DOCUMENTOS SEM VALOR FISCAL</div>
+  <header>
+    <h1>Prefeitura Municipal de Cidade Fictícia</h1>
+    <small>Secretaria Municipal da Fazenda - Sistema de Nota Fiscal de Serviços Eletrônica (NFS-e)</small>
+  </header>
+  {{#if prestadorName}}
+  <nav>
+    <a href="/">Início</a>
+    <a href="/nfse/emitir">Emitir NFS-e</a>
+    <a href="/nfse/consulta">Consultar NFS-e por RPS</a>
+    <form method="post" action="/logout"><button type="submit">Sair</button></form>
+    <span class="who">{{prestadorName}} - CNPJ {{prestadorCnpj}}</span>
+  </nav>
+  {{/if}}
+  <main>
+    {{{body}}}
+  </main>
+  <footer>Sistema fictício para demonstração. Nenhuma NFS-e real é emitida.</footer>
+</body>
+</html>
