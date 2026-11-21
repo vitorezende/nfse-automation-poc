@@ -25,7 +25,13 @@ unexpected error (e.g. no broker confirm)        → 3 in-process tries (1s, 2s,
 
 Each page step waits for an explicit outcome (the logged-in menu or an alert, the NFS-e number or an alert), never for a bare load state. Every navigation checks the HTTP status.
 
-Every log line carries the command's correlation ID.
+Every log line carries the instance hostname, the thread and the command's correlation ID.
+
+## Concurrency and scaling
+
+- Each instance runs `ROBOT_CONCURRENCY` (default 3) consumer threads, each with one unacked command (prefetch 1).
+- Playwright for Java is **not thread-safe**: its objects must stay on the thread that created them. So each consumer thread owns its own Playwright + Browser (`BrowserPool`), and every Solicitação gets a fresh, isolated `BrowserContext`. Cookies and sessions never cross between concurrent issuances.
+- Scale out with `docker compose up -d --scale invoice-robot=3`. Instances compete for `robot.issue-nfse`, and each exposes `/actuator/health/liveness`, which compose uses as its healthcheck.
 
 ## Configuration
 
@@ -36,6 +42,7 @@ Every log line carries the command's correlation ID.
 | `CREDENTIALS_FILE` | `../../infra/robot/credentials.json` | Secret store: credentialRef → Prefeitura login |
 | `HEADLESS` | `true` | Set `false` locally to watch the browser |
 | `RETRY_DELAYS` | `10s,1m,5m` | Backoff per retry (at most 3, one per retry queue) |
+| `ROBOT_CONCURRENCY` | `3` | Concurrent issuances per instance |
 
 ## Tests
 
