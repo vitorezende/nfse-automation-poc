@@ -4,7 +4,7 @@ RUN apk add --no-cache openssl
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npm run build && npm prune --omit=dev
+RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine
 WORKDIR /app

@@ -26,13 +26,12 @@ export class AuthController {
       res.render('login', { title: 'Acesso ao sistema', error: 'Usuário ou senha inválidos.', username: body.username });
       return;
     }
-    req.session.regenerate((err) => {
-      if (err) throw err;
-      req.session.prestadorId = prestador.id;
-      req.session.prestadorName = prestador.name;
-      req.session.prestadorCnpj = prestador.cnpj;
-      res.redirect('/');
-    });
+    // Promisified so a failure surfaces through Nest's exception handling instead of crashing the process.
+    await new Promise<void>((resolve, reject) => req.session.regenerate((err) => (err ? reject(err) : resolve())));
+    req.session.prestadorId = prestador.id;
+    req.session.prestadorName = prestador.name;
+    req.session.prestadorCnpj = prestador.cnpj;
+    res.redirect('/');
   }
 
   @Post('logout')
