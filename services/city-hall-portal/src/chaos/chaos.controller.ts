@@ -14,7 +14,7 @@ export class ChaosController {
     const settings = this.chaos.current();
     res.render('chaos', {
       title: 'Modo caos',
-      settings: {
+      chaos: {
         ...settings,
         submitErrorPercent: Math.round(settings.submitErrorProbability * 100),
         sessionExpiryPercent: Math.round(settings.sessionExpiryProbability * 100),

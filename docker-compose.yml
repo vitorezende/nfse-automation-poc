@@ -108,6 +108,8 @@ services:
       CITY_HALL_URL: http://city-hall-portal:3001
       CREDENTIALS_FILE: /run/secrets/robot-credentials.json
       ROBOT_CONCURRENCY: 3 # issuances in flight per instance; scale out with --scale invoice-robot=N
+      # Backoff before retries 1-3; shorten it to reach the DLQ quickly in a demo (see README).
+      RETRY_DELAYS: ${RETRY_DELAYS:-10s,1m,5m}
       S3_ENDPOINT: http://object-storage:8333
     volumes:
       - ./infra/robot/credentials.json:/run/secrets/robot-credentials.json:ro

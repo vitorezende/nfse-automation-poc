@@ -84,7 +84,7 @@ public class IssuanceService {
         return new IssuanceOutcome.BusinessFailure(failure.getMessage());
       }
       // Server errors, timeouts, browser hiccups: anything not known to be final is worth a retry.
-      String reason = failure.getMessage() == null ? failure.getClass().getSimpleName() : firstLine(failure.getMessage());
+      String reason = failure.getMessage() == null ? failure.getClass().getSimpleName() : summarize(failure.getMessage());
       log.warn("Attempt {} failed (transient): {}", attempt, reason);
       return new IssuanceOutcome.TransientFailure(reason, artifacts);
     }
@@ -143,8 +143,17 @@ public class IssuanceService {
     }
   }
 
-  private static String firstLine(String message) {
-    String line = message.lines().findFirst().orElse(message);
+  /**
+   * One readable line for the timeline. Playwright for Java wraps its errors in a multi-line "Error { message='...'
+   * name='TimeoutError' ... }" block, so the cause is taken from the message field when present.
+   */
+  private static String summarize(String message) {
+    String line = message.lines()
+        .map(String::strip)
+        .filter(l -> l.startsWith("message='"))
+        .map(l -> l.substring("message='".length()))
+        .findFirst()
+        .orElseGet(() -> message.lines().findFirst().orElse(message));
     return line.length() > 500 ? line.substring(0, 500) : line;
   }
 }
