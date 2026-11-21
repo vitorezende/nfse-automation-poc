@@ -1,0 +1,8 @@
+{
+  "name": "nfse-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-timeout=600000 ."
+  }
+}
