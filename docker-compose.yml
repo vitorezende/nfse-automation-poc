@@ -5,7 +5,9 @@ name: nfse-automation-poc
 services:
   # Portal da Contabilidade: creates Solicitações de Emissão and dispatches IssueNfse via the outbox.
   accounting-portal:
-    build: ./services/accounting-portal
+    build:
+      context: .
+      dockerfile: services/accounting-portal/Dockerfile
     ports:
       - "3000:3000" # http://localhost:3000
     environment:

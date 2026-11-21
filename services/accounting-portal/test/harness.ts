@@ -14,6 +14,10 @@ export const COMMAND_QUEUE = 'robot.issue-nfse';
 export interface Harness {
   app: INestApplication;
   rabbit: StartedTestContainer;
+  /** Publishes an NFS-e event as the Robô de Emissão would, on the events exchange. */
+  publishEvent(event: Record<string, any>, routingKey: string): Promise<void>;
+  /** Base URL of the app listening on a real port (for streaming endpoints). */
+  baseUrl: string;
   /** Removes and returns the next command on the robot's queue, or null if none arrives in time. */
   takeCommand(timeoutMs?: number): Promise<Record<string, any> | null>;
   stop(): Promise<void>;
@@ -46,7 +50,9 @@ export async function startHarness(): Promise<Harness> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
-  await app.init();
+  await app.listen(0);
+  const address = app.getHttpServer().address();
+  const baseUrl = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`;
   await seedPrestadores(app.get(PrismaService));
 
   // Reconnects lazily, so tests that restart the broker keep observing the queue.
@@ -67,6 +73,15 @@ export async function startHarness(): Promise<Harness> {
   return {
     app,
     rabbit,
+    baseUrl,
+    async publishEvent(event, routingKey) {
+      const ch = await getChannel();
+      ch.publish('nfse.events', routingKey, Buffer.from(JSON.stringify(event)), {
+        contentType: 'application/json',
+        messageId: event.messageId,
+        persistent: true,
+      });
+    },
     async takeCommand(timeoutMs = 10_000) {
       const deadline = Date.now() + timeoutMs;
       while (Date.now() < deadline) {

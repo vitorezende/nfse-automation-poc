@@ -7,3 +7,10 @@ export const STATUS_LABELS: Record<IssuanceRequestStatus, string> = {
   ISSUED: 'Emitida',
   FAILED: 'Falhou',
 };
+
+export const EVENT_LABELS: Record<string, string> = {
+  NfseIssuanceStarted: 'Robô iniciou a emissão',
+  NfseIssuanceAttemptFailed: 'Tentativa falhou',
+  NfseIssued: 'NFS-e emitida',
+  NfseIssuanceFailed: 'Emissão falhou',
+};

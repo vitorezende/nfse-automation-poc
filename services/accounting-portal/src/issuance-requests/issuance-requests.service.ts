@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type IssuanceRequest, type Prestador } from '../generated/prisma/client.js';
+import { Prisma, type IssuanceRequest, type Prestador, type TimelineEntry } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma.service.js';
 import { buildIssueNfseCommand, ISSUE_NFSE_QUEUE } from './issue-nfse-command.js';
 
@@ -15,7 +15,7 @@ export interface CreateIssuanceRequestForm {
 
 export class InvalidIssuanceRequestError extends Error {}
 
-export type IssuanceRequestWithPrestador = IssuanceRequest & { prestador: Prestador };
+export type IssuanceRequestWithPrestador = IssuanceRequest & { prestador: Prestador; timeline?: TimelineEntry[] };
 
 @Injectable()
 export class IssuanceRequestsService {
@@ -83,7 +83,10 @@ export class IssuanceRequestsService {
   }
 
   find(id: string): Promise<IssuanceRequestWithPrestador | null> {
-    return this.prisma.issuanceRequest.findUnique({ where: { id }, include: { prestador: true } });
+    return this.prisma.issuanceRequest.findUnique({
+      where: { id },
+      include: { prestador: true, timeline: { orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }] } },
+    });
   }
 
   list(): Promise<IssuanceRequestWithPrestador[]> {

@@ -1,12 +1,66 @@
 {
-  "users": [{ "name": "poc", "password": "poc", "tags": ["administrator"] }],
-  "vhosts": [{ "name": "/" }],
-  "permissions": [{ "user": "poc", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }],
+  "users": [
+    {
+      "name": "poc",
+      "password": "poc",
+      "tags": [
+        "administrator"
+      ]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "poc",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
   "exchanges": [
-    { "name": "nfse.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+    {
+      "name": "nfse.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
   ],
   "queues": [
-    { "name": "robot.issue-nfse", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-queue-type": "quorum" } }
+    {
+      "name": "robot.issue-nfse",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "accounting.nfse-events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
   ],
-  "bindings": []
+  "bindings": [
+    {
+      "source": "nfse.events",
+      "vhost": "/",
+      "destination": "accounting.nfse-events",
+      "destination_type": "queue",
+      "routing_key": "nfse.#",
+      "arguments": {}
+    }
+  ]
 }

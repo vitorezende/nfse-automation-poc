@@ -1,7 +1,9 @@
 <h1>Solicitação de Emissão - RPS {{request.rps}}</h1>
+<div id="live" hx-ext="sse" sse-connect="/solicitacoes/{{request.id}}/eventos" sse-swap="update">
+  {{> request-live}}
+</div>
 <div class="card">
   <dl>
-    <dt>Status</dt><dd><span class="badge {{request.status}}" data-field="status">{{request.statusLabel}}</span></dd>
     <dt>RPS (número / série)</dt><dd data-field="rps">{{request.rps}}</dd>
     <dt>Prestador</dt><dd data-field="prestador">{{request.prestador}}</dd>
     <dt>Tomador</dt><dd data-field="tomador">{{request.tomador}}</dd>
@@ -12,7 +14,4 @@
     <dt>Discriminação</dt><dd>{{request.discriminacao}}</dd>
     <dt>Criada em</dt><dd>{{request.createdAt}}</dd>
   </dl>
-  {{#if request.canDispatch}}
-  <form method="post" action="/solicitacoes/{{request.id}}/emitir"><p><button class="btn" type="submit">Emitir</button></p></form>
-  {{/if}}
 </div>

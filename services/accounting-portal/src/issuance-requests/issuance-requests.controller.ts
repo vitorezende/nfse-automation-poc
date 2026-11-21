@@ -1,6 +1,9 @@
-import { Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, type MessageEvent, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse } from '@nestjs/common';
+import hbs from 'hbs';
+import { concat, defer, filter, from, Observable, switchMap } from 'rxjs';
+import { IssuanceUpdates } from './issuance-updates.js';
 import type { Response } from 'express';
-import { STATUS_LABELS } from './status-labels.js';
+import { EVENT_LABELS, STATUS_LABELS } from './status-labels.js';
 import {
   type CreateIssuanceRequestForm,
   InvalidIssuanceRequestError,
@@ -23,13 +26,32 @@ function toView(request: IssuanceRequestWithPrestador) {
     amount: request.amount.toNumber().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
     competencia: request.competencia,
     discriminacao: request.discriminacao,
-    createdAt: request.createdAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    createdAt: formatDate(request.createdAt),
+    nfseNumber: request.nfseNumber,
+    nfseVerificationCode: request.nfseVerificationCode,
+    nfseIssuedAt: request.nfseIssuedAt ? formatDate(request.nfseIssuedAt) : null,
+    failureReason: request.failureReason,
+    timeline: (request.timeline ?? []).map((entry) => ({
+      occurredAt: formatDate(entry.occurredAt),
+      label: EVENT_LABELS[entry.type] ?? entry.type,
+      attempt: entry.attempt,
+      detail: entry.detail,
+    })),
   };
 }
 
+function formatDate(date: Date): string {
+  return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+const renderLive = hbs.handlebars.compile('{{> request-live}}');
+
 @Controller()
 export class IssuanceRequestsController {
-  constructor(private readonly issuanceRequests: IssuanceRequestsService) {}
+  constructor(
+    private readonly issuanceRequests: IssuanceRequestsService,
+    private readonly updates: IssuanceUpdates,
+  ) {}
 
   @Get()
   async list(@Res() res: Response): Promise<void> {
@@ -71,6 +93,18 @@ export class IssuanceRequestsController {
       throw error;
     }
     res.redirect(`/solicitacoes/${id}`);
+  }
+
+  /** Live region of the detail page: re-rendered and pushed (HTMX SSE) whenever an event is applied. */
+  @Sse('solicitacoes/:id/eventos')
+  events(@Param('id', ParseUUIDPipe) id: string): Observable<MessageEvent> {
+    const changes = new Observable<string>((subscriber) => this.updates.subscribe((changed) => subscriber.next(changed)));
+    const render = () =>
+      defer(() => this.issuanceRequests.find(id)).pipe(
+        filter((request) => request !== null),
+        switchMap((request) => from([{ type: 'update', data: renderLive({ request: toView(request!) }) }])),
+      );
+    return concat(render(), changes.pipe(filter((changed) => changed === id), switchMap(render)));
   }
 
   @Get('solicitacoes/:id')
