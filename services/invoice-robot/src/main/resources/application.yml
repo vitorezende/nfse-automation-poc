@@ -55,4 +55,4 @@ robot:
 
 logging:
   pattern:
-    console: "%d{HH:mm:ss.SSS} %-5level ${HOSTNAME:-robot} [%thread] [%X{correlationId:-}] %logger{20} - %msg%n"
+    console: "%d{HH:mm:ss.SSS} %-5level ${HOSTNAME:robot} [%thread] [%X{correlationId:-}] %logger{20} - %msg%n"

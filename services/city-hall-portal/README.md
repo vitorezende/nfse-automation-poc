@@ -12,7 +12,7 @@ A deliberately legacy-looking, web-only NFS-e portal used as the target of the R
 | `/nfse/consulta?rpsNumber=&rpsSeries=` | Query NFS-e by RPS |
 | `/nfse/:id` | NFS-e detail (number, verification code, ISS) |
 | `/nfse/:id/xml`, `/nfse/:id/pdf` | Simplified unsigned XML; DANFSe PDF always watermarked "SIMULAÇÃO – SEM VALOR FISCAL" |
-| `/admin/chaos` | Chaos mode (no login): random latency and HTTP 500 probability on issuance; applies immediately |
+| `/admin/chaos` | Chaos mode (no login), applied immediately: random latency, HTTP 500 on issuance, session expiry on issuance (never twice in a row per Prestador), scheduled maintenance served with HTTP 200, arithmetic captcha on login |
 
 ## Seeded Prestadores
 

@@ -5,5 +5,6 @@ declare module 'express-session' {
     prestadorId: number;
     prestadorName: string;
     prestadorCnpj: string;
+    captchaAnswer: string;
   }
 }

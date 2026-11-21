@@ -23,6 +23,8 @@ import poc.nfse.robot.storage.DocumentStore;
 public class IssuanceService {
 
   private static final Logger log = LoggerFactory.getLogger(IssuanceService.class);
+  /** Re-logins within one attempt before a lost session counts as a transient failure of the attempt. */
+  private static final int MAX_RELOGINS = 2;
 
   private final BrowserPool browsers;
   private final CredentialStore credentials;
@@ -88,14 +90,23 @@ public class IssuanceService {
       Page page = context.newPage();
       CityHallPortal portal = new CityHallPortal(page, properties.cityHallUrl());
       portal.login(login);
-      IssuedNfse nfse = portal.findByRps(payload.rps())
-          .map(existing -> {
-            log.info("NFS-e {} already exists for RPS {}/{}; not issuing again",
-                existing.number(), payload.rps().number(), payload.rps().series());
-            return existing;
-          })
-          .orElseGet(() -> portal.issue(payload));
-      return new Result(nfse, portal.downloadDocuments());
+      for (int relogins = 0; ; relogins++) {
+        try {
+          // Safe to repeat after a re-login: the lookup by RPS finds an NFS-e issued just before the expiry.
+          IssuedNfse nfse = portal.findByRps(payload.rps())
+              .map(existing -> {
+                log.info("NFS-e {} already exists for RPS {}/{}; not issuing again",
+                    existing.number(), payload.rps().number(), payload.rps().series());
+                return existing;
+              })
+              .orElseGet(() -> portal.issue(payload));
+          return new Result(nfse, portal.downloadDocuments());
+        } catch (SessionExpiredException e) {
+          if (relogins >= MAX_RELOGINS) throw e;
+          log.info("{}; logging in again", e.getMessage());
+          portal.login(login);
+        }
+      }
     }
   }
 

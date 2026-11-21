@@ -115,7 +115,8 @@ public abstract class RobotBoundaryTestSupport {
     registry.add("spring.rabbitmq.username", () -> "poc");
     registry.add("spring.rabbitmq.password", () -> "poc");
     registry.add("robot.city-hall-url", RobotBoundaryTestSupport::cityHallUrl);
-    registry.add("robot.credentials-file", () -> REPO_ROOT.resolve("infra/robot/credentials.json").toString());
+    registry.add("robot.credentials-file",
+        () -> Path.of("src/test/resources/test-credentials.json").toAbsolutePath().toString());
     // Short backoff so retry scenarios finish quickly; the production default is 10s, 1m, 5m.
     registry.add("robot.retry-delays", () -> "1s,1s,1s");
     registry.add("robot.storage.endpoint", RobotBoundaryTestSupport::objectStorageUrl);
@@ -157,7 +158,7 @@ public abstract class RobotBoundaryTestSupport {
   }
 
   static void resetChaos() throws Exception {
-    setChaos("latencyMinMs=0&latencyMaxMs=0&submitErrorPercent=0");
+    setChaos("latencyMinMs=0&latencyMaxMs=0&submitErrorPercent=0&sessionExpiryPercent=0");
   }
 
   /** Looks the RPS up on the Portal da Prefeitura as the given Prestador, like a human would. */

@@ -1,9 +1,13 @@
 <h2>Acesso ao sistema</h2>
+{{#if notice}}<div class="error">{{notice}}</div>{{/if}}
 {{#if error}}<div class="error" role="alert">{{error}}</div>{{/if}}
 <form method="post" action="/login">
   <table class="form">
     <tr><td class="label"><label for="username">Usuário</label></td><td><input type="text" id="username" name="username" value="{{username}}" autocomplete="username"></td></tr>
     <tr><td class="label"><label for="password">Senha</label></td><td><input type="password" id="password" name="password" autocomplete="current-password"></td></tr>
+    {{#if captchaQuestion}}
+    <tr><td class="label"><label for="captcha">Verificação: quanto é <span data-captcha-question="{{captchaQuestion}}">{{captchaQuestion}}</span>?</label></td><td><input type="text" id="captcha" name="captcha" autocomplete="off"></td></tr>
+    {{/if}}
     <tr><td></td><td><button type="submit" class="btn">Entrar</button></td></tr>
   </table>
 </form>

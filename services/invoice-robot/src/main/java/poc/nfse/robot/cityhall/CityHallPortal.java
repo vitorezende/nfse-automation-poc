@@ -17,6 +17,7 @@ import poc.nfse.robot.issuance.BusinessFailureException;
 import poc.nfse.robot.issuance.IssueNfseCommand;
 import poc.nfse.robot.issuance.IssuedNfse;
 import poc.nfse.robot.issuance.NfseDocuments;
+import poc.nfse.robot.issuance.SessionExpiredException;
 import poc.nfse.robot.issuance.TransientFailureException;
 
 /**
@@ -40,6 +41,7 @@ public class CityHallPortal {
     open("/login");
     page.getByLabel("Usuário", new Page.GetByLabelOptions().setExact(true)).fill(credentials.username());
     page.getByLabel("Senha", new Page.GetByLabelOptions().setExact(true)).fill(credentials.password());
+    solveCaptchaIfAsked();
     submit("Entrar");
     // Wait for an outcome, not a load state: either the logged-in menu or a refusal.
     Locator loggedIn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sair"));
@@ -98,9 +100,36 @@ public class CityHallPortal {
     return response.body();
   }
 
-  /** Navigates and treats server errors as transient: the Prefeitura may be back in a minute. */
+  /**
+   * The login captcha is a plain arithmetic challenge ("3 + 4"). This is deliberately not captcha breaking:
+   * the fake Prefeitura's captcha is meant to be machine-solvable by a known rule.
+   */
+  private void solveCaptchaIfAsked() {
+    Locator question = page.locator("[data-captcha-question]");
+    if (question.count() == 0) return;
+    String[] terms = question.getAttribute("data-captcha-question").split("\\+");
+    int answer = Integer.parseInt(terms[0].trim()) + Integer.parseInt(terms[1].trim());
+    page.locator("#captcha").fill(String.valueOf(answer));
+  }
+
+  /** Navigates and checks where we landed: server errors, maintenance and a lost session are all transient. */
   private void open(String path) {
     checkStatus(page.navigate(baseUrl + path), path);
+    checkLanding(path);
+  }
+
+  /**
+   * Content-based checks, because the status code alone lies: a maintenance page is served with HTTP 200,
+   * and an expired session is a redirect to the login page.
+   */
+  private void checkLanding(String step) {
+    if (page.locator("[data-maintenance]").count() > 0) {
+      throw new TransientFailureException("Prefeitura under scheduled maintenance (at " + step + ")");
+    }
+    boolean onLogin = page.url().contains("/login");
+    if (onLogin && !step.equals("/login") && !step.equals("Entrar")) {
+      throw new SessionExpiredException("Prefeitura session expired (at " + step + ")");
+    }
   }
 
   /** Clicks a submit button and checks the HTTP status of the page it leads to. */
@@ -108,6 +137,8 @@ public class CityHallPortal {
     Locator button = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(buttonName));
     Response response = page.waitForResponse(r -> r.request().isNavigationRequest() && "POST".equals(r.request().method()), button::click);
     checkStatus(response, buttonName);
+    page.waitForLoadState();
+    checkLanding(buttonName);
   }
 
   private static void checkStatus(Response response, String step) {

@@ -14,7 +14,11 @@ export class ChaosController {
     const settings = this.chaos.current();
     res.render('chaos', {
       title: 'Modo caos',
-      settings: { ...settings, submitErrorPercent: Math.round(settings.submitErrorProbability * 100) },
+      settings: {
+        ...settings,
+        submitErrorPercent: Math.round(settings.submitErrorProbability * 100),
+        sessionExpiryPercent: Math.round(settings.sessionExpiryProbability * 100),
+      },
     });
   }
 
@@ -25,6 +29,9 @@ export class ChaosController {
       latencyMinMs,
       latencyMaxMs: clamp(Number(body.latencyMaxMs), latencyMinMs, 30_000),
       submitErrorProbability: clamp(Number(body.submitErrorPercent) / 100, 0, 1),
+      sessionExpiryProbability: clamp(Number(body.sessionExpiryPercent) / 100, 0, 1),
+      maintenance: body.maintenance === 'on',
+      captcha: body.captcha === 'on',
     };
     this.chaos.update(next);
     res.redirect('/admin/chaos');
